@@ -25,8 +25,7 @@ Subagent (general-purpose):
     spec, requirements, or linked issue, say so at the top of your report
     and ask for them. Until they arrive, your review is code-only:
     findings are still findings, but "Ready to merge" reads "No —
-    requirements not reviewed". Never approve a diff whose requirements
-    you have not read. With requirements in hand, re-verdict.
+    requirements not reviewed". With requirements in hand, re-verdict.
 
     ## Git Range to Review
 
