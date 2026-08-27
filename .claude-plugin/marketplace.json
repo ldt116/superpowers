@@ -3,7 +3,7 @@
   "description": "ldt116 fork of the Superpowers core skills library - tuned: subagent-driven development by default, independent per-task review",
   "owner": {
     "name": "ldt116",
-    "email": "ldt116@users.noreply.github.com"
+    "email": "tl@thuanle.me"
   },
   "plugins": [
     {
