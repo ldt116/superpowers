@@ -9,7 +9,7 @@ This is a fork of [obra/superpowers](https://github.com/obra/superpowers), fine-
 1. **Subagent-driven development is the default.** After saving a plan, `writing-plans` goes straight into `subagent-driven-development` — it no longer asks which execution approach to use. `executing-plans` is the fallback for harnesses without subagent access.
 2. **Independent review when executing plans inline.** `executing-plans` runs an independent review after every task — a dispatched reviewer subagent, or a fresh-eyes self-review when subagents are unavailable — plus one final whole-plan review before finishing.
 3. **Fork packaging identity.** The marketplace is `superpowers-ldt116`; `owner` is ldt116 and `.claude-plugin/plugin.json` points at this fork (author credits stay with upstream).
-4. **Hardened review contract.** Review seats trust code over claims (risk diffs re-verified by the reviewer, command-and-output evidence floor), never approve without requirements, audit the implementer's Self-review line, and record deferred debt beyond the workspace. Spec: `docs/superpowers/specs/2026-08-27-hardened-review-contract-design.md`.
+4. **Hardened review contract.** Review seats trust code over claims (risk diffs re-verified by the reviewer, command-and-output evidence floor), never approve without requirements, audit the implementer's Self-review line, and record deferred debt beyond the workspace.
 
 See `CLAUDE.md` for the divergence list agents working in this repo follow.
 
