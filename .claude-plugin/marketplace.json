@@ -1,14 +1,14 @@
 {
   "name": "superpowers-ldt116",
-  "description": "Development marketplace for Superpowers core skills library",
+  "description": "ldt116 fork of the Superpowers core skills library - tuned: subagent-driven development by default, independent per-task review",
   "owner": {
-    "name": "Jesse Vincent",
-    "email": "jesse@fsck.com"
+    "name": "ldt116",
+    "email": "ldt116@users.noreply.github.com"
   },
   "plugins": [
     {
       "name": "superpowers",
-      "description": "Core skills library for Claude Code: TDD, debugging, collaboration patterns, and proven techniques",
+      "description": "Core skills library for Claude Code: TDD, debugging, collaboration patterns, and proven techniques (ldt116 fork)",
       "version": "6.3.0",
       "source": "./",
       "author": {
