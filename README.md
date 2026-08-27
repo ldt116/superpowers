@@ -19,12 +19,12 @@ Install from this repository instead of the official marketplaces.
 
 ```text
 /plugin marketplace add ldt116/superpowers
-/plugin install superpowers@superpowers-dev
+/plugin install superpowers@superpowers-ldt116
 ```
 
 **Other harnesses:** use the install commands in the upstream README below, replacing `obra/superpowers` with `ldt116/superpowers`.
 
-To update after the fork changes, open `/plugin`, update the `superpowers-dev` marketplace, then update or reinstall Superpowers.
+To update after the fork changes, open `/plugin`, update the `superpowers-ldt116` marketplace, then update or reinstall Superpowers.
 
 ---
 
