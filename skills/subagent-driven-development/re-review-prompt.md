@@ -61,15 +61,28 @@ Subagent (general-purpose):
     does not block this task and does not extend the loop. A broad
     whole-branch review happens after all tasks are complete.
 
-    ## Tests
+    ## Verification: Trust the Code, Not the Report
 
-    The implementer re-ran the tests covering the amended code and appended
-    the results to the report file. Treat the report as unverified claims:
-    confirm the fix report names the covering tests and shows their output,
-    and verify the claims against the diff. Do not re-run the suite to
-    confirm their report. Run a test only when reading the code raises a
-    specific doubt that no existing run answers — and then a focused test,
-    never a package-wide suite.
+    Classify the fix diff. It is a risk diff when it touches a write
+    path (code that mutates persistent state or sends data to an external
+    system), authentication, secrets, or permissions, concurrency or
+    shared mutable state, or anything the brief's or plan's risk notes
+    name.
+
+    **Risk diff — verify the fix yourself.** Run the focused tests
+    covering the amended code at the head you are reviewing, and put the
+    command and its key output in your report (running tests is
+    verification, not mutation; copy the repo to scratch first if the
+    tests would write to tracked files). If you cannot run them, say so —
+    your round verdict must note the fix is verified-by-code-read-only.
+
+    **Otherwise — the evidence floor.** A finding is ADDRESSED only when
+    the fix report names the covering test and shows the command and its
+    output. A fix that claims tests with no command and output does not
+    evidence the finding closed: verdict it NOT ADDRESSED (evidence
+    missing) and say exactly that.
+
+    Focused tests only — never a package-wide suite.
 
     ## Output Format
 

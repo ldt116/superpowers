@@ -84,9 +84,6 @@ the command and output in its report.
 
 ## Scenario 5 — Non-risk diff, prose-only evidence (task-reviewer)
 
-Run Scenario 1's setup first, then reset the diff back and add a pure
-helper instead:
-
 ```bash
 SCRATCH=/tmp/review-contract-scratch/s5
 rm -rf "$SCRATCH"; mkdir -p "$SCRATCH"
@@ -255,7 +252,10 @@ deferred finding and where it lives.
 ## Scenario 6 — Predicate micro-test (wording)
 
 Dispatch five one-shot classification prompts (plus one control), each a
-`general-purpose` subagent. Test prompt:
+`general-purpose` subagent. Shape: each predicate dispatch carries the
+preamble (the predicate list) plus ONE change, numbering kept from the
+five below; the control dispatch carries the same five changes with no
+predicate list. Test prompt:
 
 ```markdown
 Risk-diff predicate list: a diff is a risk diff when it touches

@@ -39,6 +39,12 @@ Dispatch a `general-purpose` subagent, filling the template at [code-reviewer.md
 - `{BASE_SHA}` - Starting commit
 - `{HEAD_SHA}` - Ending commit
 
+**What the reviewer does with your dispatch:** verification is tiered by
+risk. Write paths, auth/secrets/permissions, concurrency, and risks the
+plan names get re-run by the reviewer at the head — your earlier runs do
+not transfer. Everything else, your DESCRIPTION must carry the exact
+verification command and its output; prose verdicts come back as findings.
+
 **3. Act on feedback:**
 - Fix Critical issues immediately
 - Fix Important issues before proceeding

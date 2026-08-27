@@ -121,9 +121,12 @@ Subagent (general-purpose):
     If the task review finds issues, you will be resumed with the findings.
     Fix them, re-run the tests that cover the amended code, and append a fix
     report to your report file: what you changed, the covering tests you
-    ran, the command, and the output. Reviewers will not re-run tests for
-    you — your report is the test evidence. Then reply with the same short
-    status contract as your first report.
+    ran, the command, and the output. Risk diffs (write paths,
+    auth/secrets/permissions, concurrency, plan-named risks) get re-run
+    by the reviewer regardless — for everything else your report is the
+    test evidence, and evidence means the command and its output, not a
+    verdict. Then reply with the same short status contract as your first
+    report.
 
     ## Report Format
 

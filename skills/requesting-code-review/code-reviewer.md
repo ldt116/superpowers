@@ -34,6 +34,32 @@ Subagent (general-purpose):
 
     Your review is read-only on this checkout. Do not mutate the working tree, the index, HEAD, or branch state in any way. Use tools like `git show`, `git diff`, and `git log` to inspect history. If you need a working copy of a different revision, check it out into a separate temporary directory (e.g. `git worktree add /tmp/review-[SHA] [SHA]`) — never move HEAD on this checkout.
 
+    ## Verification: Trust the Code, Not the Claims
+
+    Tier what you verify by what the diff touches. A risk diff — a write
+    path (code that mutates persistent state or sends data to an external
+    system), authentication, secrets, or permissions, concurrency or
+    shared mutable state, or anything the requirements' risk notes name —
+    you MUST verify yourself at the head: run the focused tests covering
+    the changed code, or the plan's verification commands, and put the
+    command and its key output in your report. Running tests is
+    verification, not mutation — if the tests would write to tracked
+    files, check the head out into a scratch worktree and run them there.
+    If you cannot run them (no toolchain, missing dependencies), say so
+    in the report: "Ready to merge" then reads "No — risk diff not
+    executed", never Yes.
+
+    Non-risk diff: the dispatch's described test results count only when
+    they carry the exact command and its output. Prose verdicts ("tests
+    pass", "14/14 green") with no output are an Important finding —
+    unverified claim — and your report says you could not verify them.
+
+    When the diff pins a load-bearing invariant (retry semantics,
+    atomicity, an access-control check) and the toolchain runs,
+    mutation-verify: check the head out into a scratch worktree, flip the
+    invariant, run the covering test, confirm it FAILS, and discard the
+    worktree. Report what you flipped and what failed.
+
     ## You Do Not Dispatch Subagents
 
     Do all of this review yourself. Never spawn a subagent to review part
@@ -67,7 +93,7 @@ Subagent (general-purpose):
     - Tests verify real behavior, not mocks?
     - Edge cases covered?
     - Integration tests where they matter?
-    - All tests passing?
+    - Test evidence carries command and output, not bare verdicts?
 
     **Production readiness:**
     - Migration strategy if schema changed?

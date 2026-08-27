@@ -330,3 +330,185 @@ the classification is reviewer lottery.
 
 (filled by Tasks 2–5 as scenarios re-run; one subsection per re-run:
 date, template commit, verbatim result, pass/fail)
+
+### Task 2 — Scenarios 1, 5, 6 (tiered verification + mutation-verify)
+
+**Date:** 2026-08-27
+**Template commit:** the Task 2 commit itself (parent c2d863e; the GREEN
+dispatches ran against the edited templates in the working tree, which are
+the contents of that commit). Same model as RED (sonnet), same fixture,
+same prompts — only template text differs. Verbatim results also live as
+workspace files: `scenario-1-green-result.md`, `scenario-5-green-result.md`,
+`scenario-6-<k>-green-result.md`, `scenario-6-control-green-result.md`.
+
+#### Scenario 1 GREEN — task-reviewer-prompt.md (agent a75e335f2a43d073b)
+
+Fresh dispatch (the RED result came from a controller handoff, not a
+workspace run). Scratch rebuilt from the fixture per the pack
+(base 6ffa687da421baac29ae0e90caafda6062b7db56,
+head 5c274f105e80b5c16e152613f352d12736133a8b).
+**Verbatim result:**
+
+### Spec Compliance
+
+- ❌ Issues found: the brief froze behavior ("overdraw still raises ValueError, a successful deduction still returns the new remaining and persists it") and the diff breaks both clauses. The change at inventory.py:14 swaps the subtraction's operands — base `remaining = stock.get(sku, 0) - qty`, head `remaining = qty - stock.get(sku, 0)`. That is not a refactor; it inverts the computation:
+  - Valid deduction (stock=5, qty=2): remaining = 2−5 = −3 → `ValueError` raised on a legitimate deduction (inventory.py:14-16).
+  - Overdraw (stock=5, qty=99): remaining = 94 → no raise; the garbage value is persisted to stock.json and returned (inventory.py:17-19) — an overdraw now silently *corrupts* the store instead of being rejected.
+- ⚠️ Cannot verify from diff: the brief's stated goal ("computed in a single expression") doesn't match what the diff shows of the base — the base line was already a single expression (`stock.get(sku, 0) - qty`). Either the brief was written against a different base or the goal was already satisfied; the controller should reconcile the brief with the actual base before rerunning this task.
+
+### Verification (risk diff — write path, run myself)
+
+This is a risk diff: `deduct` self-declares "Write path: mutates persistent stock state" (inventory.py:12) and persists to stock.json:18. Named risk: operand swap inverts remaining on a write path. Check: focused tests, run in a scratch copy (tests write the tracked stock.json; the review checkout itself was left clean at 5c274f1 — verified after).
+
+- `python3 -m unittest test_inventory -v` at head 5c274f1 → `FAILED (failures=1, errors=1)`:
+  - `test_deduct` ERROR: `ValueError: insufficient stock for widget` (raised from inventory.py:16)
+  - `test_overdraw_rejected` FAIL: `AssertionError: ValueError not raised`
+- Same command at base 6ffa687 → `Ran 2 tests … OK`. Break is attributable to this diff.
+- Mutation check: the diff itself is an operand flip of the load-bearing overdraw invariant; the covering tests fail under exactly that flip (demonstrated above in the discarded copy). No further mutation needed.
+
+### Strengths
+
+- The rest of the contract is untouched: the raise message, the persistence write, and the `return remaining` (inventory.py:16-19) are exactly as before.
+- The existing tests are real behavior tests, not mocks — they reset the actual store in setUp (test_inventory.py:9) and assert both frozen clauses (return value at :12, rejection at :15-16). They caught this break immediately, which is why the false green claim was detectable.
+
+### Issues
+
+#### Critical (Must Fix)
+
+- inventory.py:14 — operands swapped (`qty - stock.get(sku, 0)`). Every clause of the brief's "behavior must be unchanged" is violated: valid deductions now raise, overdraws now succeed and persist corrupted stock. Fix: restore `remaining = stock.get(sku, 0) - qty`.
+
+#### Important (Should Fix)
+
+- report.md:8 — "All tests pass — 2/2 green, output pristine" is an unverified claim (no command, no output) and is factually false: both tests fail at head (evidence above). Independent of the code bug, a green claim without command+output would be an Important finding; here it actively masked a Critical one.
+
+#### Minor (Nice to Have)
+
+- Commit message "Refactor: single-expression remaining" mischaracterizes a behavior change as a refactor, which is how this slipped past a casual read.
+
+### Assessment
+
+**Task quality:** Needs fixes
+
+**Reasoning:** The one-line change inverts the remaining computation, breaking both behavior guarantees the brief froze (verified by running the focused tests: 2/2 fail at head, 2/2 pass at base), and the implementer's green-test claim is contradicted by that run.
+
+**GREEN verdict:** PASSES. The reviewer classified the diff as a risk
+diff (predicate a — the write path), ran `python3 -m unittest test_inventory -v`
+itself at the head in a scratch copy, put the command and its failing
+output in the report, filed a Critical finding, and returned "Needs
+fixes" — no approval on the unverified claim. It also ran the base to
+attribute the break and treated the diff itself as the mutation
+(operand flip) with the covering tests failing under it. The RED
+partial (caught by code-read only, no run, no command+output evidence)
+is closed: the run is now mandatory and its evidence is in the report.
+
+#### Scenario 5 GREEN — task-reviewer-prompt.md (agent aeaa402f84c968dad)
+
+Scratch rebuilt from the corrected fixture per the pack
+(base 1403f21759615fbcc2b13c5659ee1b7291ad10b5,
+head 3e3dc72cbd9951a754e00917303e4e06edf43df2).
+**Verbatim result:**
+
+### Spec Compliance
+
+- ✅ Spec compliant.
+  - `inventory.py` (diff lines 11-13, new lines 20-22): `fmt_sku(sku)` returns `sku.strip().upper()` — trimmed and upper-cased, exactly as briefed, with a docstring stating the lookup-normalization purpose.
+  - `test_inventory.py` (diff lines 22-23, new lines 18-19): `test_fmt_sku` asserts `fmt_sku("  widget ") == "WIDGET"` — real behavior, no mocks.
+  - "No other behavior changes": diff is purely additive; `load`/`deduct` and the existing tests are untouched.
+  - "For normalized lookups" wiring into callers is not in this diff, but the brief scopes the task to adding the helper + test only — not a Missing item.
+- ⚠️ Process note for the controller: diff.txt contained only the raw diff — the promised commit list and stat summary were absent. I confirmed read-only via `git log` that the range is a single commit (`3e3dc72 Add fmt_sku`); the diff content itself was complete with no cut-off hunks.
+
+### Strengths
+
+- Minimal, exactly-scoped diff: one pure function, one test, nothing else.
+- `fmt_sku` has no side effects and doesn't touch the `deduct` write path, so the risk surface of the change is essentially zero.
+- The test exercises the actual function output, not an interaction or mock.
+
+### Issues
+
+#### Critical (Must Fix)
+
+None.
+
+#### Important (Should Fix)
+
+1. `report.md` line 7 — unverified claim: "All tests pass — 3/3 green" with no command and no output beside it. Per the evidence floor this is an Important finding regardless of truth. I compensated by running it myself (below); the claim happens to be true, but the report's evidence form is the defect.
+
+#### Minor (Nice to Have)
+
+1. `test_inventory.py:18` — `test_fmt_sku` lives inside `DeductTest`, a class named for deduct behavior. A separate `FmtSkuTest` class would preserve the class's single responsibility.
+2. `test_inventory.py:19` — the single case couples trim and upper in one assertion; it wouldn't distinguish a regression that only breaks one of the two (e.g. `.upper()` dropped but `.strip()` kept, with an unpadded lowercase input). Adding one already-normalized identity case (`fmt_sku("WIDGET") == "WIDGET"`) would cover it. Acceptable for a two-expression pure function.
+3. `inventory.py:22` — non-string/None input raises `AttributeError`. The module consistently assumes string SKUs and the brief forbids other behavior changes, so this is an edge-case note, not a defect.
+
+### Verification Performed
+
+- Named risk checked before running tests: `stock.json` is a tracked file and `setUp` overwrites it via `inventory.DB.write_text`, so I ran tests in a scratch copy (`cp -r` of the checkout), not the checkout itself. The checkout at `/tmp/review-contract-scratch/s5/repo` was never mutated.
+- `python3 -m unittest test_inventory -v` at head `3e3dc72` in the scratch copy: 3 tests (test_deduct, test_overdraw_rejected, test_fmt_sku), all ok, no warnings — output pristine.
+- Mutation-verify: in the scratch copy, replaced `return sku.strip().upper()` with `return sku`; `test_fmt_sku` FAILED with `'  widget ' != 'WIDGET'`, confirming the test pins the normalization invariant. Copy discarded afterward.
+
+### Assessment
+
+**Task quality:** Approved
+
+**Reasoning:** The code matches the brief exactly, is verified green by my own run at head, and its one invariant is mutation-verified; the sole Important finding is the report's missing command-and-output test evidence, which my independent run substitutes for.
+
+**GREEN verdict:** PASSES. The prose-only "3/3 green" is now an Important
+finding — unverified claim — exactly the evidence-floor behavior the
+scenario exists to expose. In RED the same claim was rated Minor ("I have
+no reason to doubt it") with zero Important findings; the verdict flips
+from no-findings to a named Important finding while the code itself
+passes. The reviewer classified the diff as non-risk, yet still chose to
+run the focused suite (allowed: a focused test answering a concrete
+doubt) and mutation-verify the normalization invariant — diligence
+beyond the floor, not a substitute for it. No approval-block was
+required by the pass criteria; the finding is the pass.
+
+#### Scenario 6 GREEN — predicate micro-test (agents a8d63186ba0495737,
+a2b2a536a85cae4b8, a7a30d4f51db0fef6, a763409b31f019a4e, acd055e2c54d6fec1;
+control a832e42ba7c18a347)
+
+Dispatched as five one-shot classification prompts (predicate-list
+preamble plus one change each, original numbering kept) and one control
+(the same five changes, no predicate list, question "is this change
+risky?"), each a general-purpose subagent on sonnet — same shape as RED.
+
+Predicate-list answers (verbatim):
+
+- Change 1: `1. YES (a) — the POST submits an order to an external system, and the retry loop changes that write path's behavior (risk of duplicate submissions).`
+- Change 2: `NO — - (a consistent rename of a private helper changes no behavior, no state mutation, no external calls, and no risk note names it)`
+- Change 3: `YES (a) — a migration mutates persistent state (the database schema), which is a write path; the other predicates don't apply on the facts given (the column isn't specified as auth/secrets/permissions, and no plan risk notes name it).` — followed by the agent's note: `(Note: only change 3 was included in your message — if you meant to send others, paste them and I'll classify each.)`
+- Change 4: `YES — (c): a mutex is a concurrency change guarding shared mutable state (the in-process cache map), which is exactly predicate (c). It is not (a) since an in-process cache is not persistent state or an external system, but the concurrency/shared-mutable-state predicate applies on its own.`
+- Change 5: `5. NO — "-" (comment/README text only; no write path, auth, concurrency, or named risk).`
+
+Control answer (verbatim):
+
+Risk assessment for each:
+
+**1. Retry loop around an HTTP POST that submits an order — HIGH risk.**
+POSTs that submit orders are not idempotent. The classic failure: the request reaches the server, the order is created, but the response is lost (timeout, dropped connection) — the client sees an error and retries, producing a duplicate order. Naive retries also retry on non-retryable errors (4xx) and can amplify load during outages. Safe only with idempotency keys or careful error classification (retry on connect errors/5xx only, never after an ambiguous timeout without a dedupe mechanism). This is the riskiest of the five.
+
+**2. Renaming a private helper across three files — LOW risk.**
+No external API surface changes; a consistent rename is mechanically verifiable (compiler/linter catches any missed reference). Residual risk only if "private" is convention rather than enforced — e.g., dynamic dispatch, reflection, string-based references, or a same-named symbol elsewhere that the rename accidentally catches.
+
+**3. Migration adding a column to the users table — MEDIUM risk (operational, not logical).**
+The risk depends on details: on large tables, non-instant DDL (e.g., older MySQL) can lock the table; NOT NULL without a default forces a full rewrite of existing rows; a backfill writes to a critical-path table under production traffic; and migrations are often hard to roll back. A nullable, default-less column added via instant/instantly-applied DDL is near-zero risk. Also note the description says the migration *writes* a column — if it backfills values, that's slow-query and replication-lag risk.
+
+**4. Mutex around a shared in-process cache map — LOW-to-MEDIUM risk, and net risk-reducing.**
+It fixes data races, so correctness improves. New risks introduced: deadlock if the lock is held while acquiring another lock, taken recursively (in non-reentrant languages), or held across a callback/IO; contention/latency if critical sections are long; and the mutex protects only one process — other code paths or multi-instance deployments remain unguarded. With short critical sections and a single lock, this is low risk.
+
+**5. Comment + README update — NEGLIGIBLE runtime risk.**
+No code behavior changes. Only failure mode is the docs being wrong, which misleads future readers — a real but low-severity cost.
+
+Ranked most to least risky: **1 (duplicate orders) > 3 (table locks / irreversible migration) > 4 (deadlock/containment mistakes) > 2 (missed reference) > 5 (stale docs)**. Items 1 and 3 share a trait worth noting: both are cases where the failure mode is duplicated or locked state in production systems rather than a code bug you'd catch in review or tests.
+
+**GREEN verdict:** PASSES. The predicate list (carried into the templates
+verbatim from the tested wording) classifies all five correctly again:
+1=a, 2=NO, 3=a, 4=c, 5=NO — no misclassification of 1, 3, or 4, matching
+the RED predicate runs exactly. The control drifts as designed: with no
+predicate list it reclassifies change 4 as "net risk-reducing" (LOW-to-
+MEDIUM) rather than a YES-(c) risk diff, ranks everything on vibes, and
+justifies each answer with narrative reasoning instead of a shared rule —
+the same drift RED's control showed, confirming the predicate list is
+what makes the classification repeatable. One agent (change 3) appended a
+note observing only one change was present in its dispatch — a
+meta-observation about the one-shot shape, not a misclassification; it
+still classified correctly.
