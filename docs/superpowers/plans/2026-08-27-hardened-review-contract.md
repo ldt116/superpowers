@@ -208,10 +208,17 @@ def fmt_sku(sku):
     """Normalize a SKU for lookups: trimmed and upper-case."""
     return sku.strip().upper()
 EOF
-cat >> test_inventory.py <<'EOF'
-
+python3 - <<'EOF'
+import pathlib
+p = pathlib.Path("test_inventory.py")
+src = p.read_text()
+method = '''
     def test_fmt_sku(self):
         self.assertEqual(inventory.fmt_sku("  widget "), "WIDGET")
+'''
+marker = '\n\nif __name__ == "__main__":'
+src = src.replace(marker, method + marker)
+p.write_text(src)
 EOF
 git commit -am "Add fmt_sku helper"
 git diff HEAD~1..HEAD > "$SCRATCH/diff.txt"

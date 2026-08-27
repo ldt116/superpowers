@@ -1,0 +1,332 @@
+# Hardened Review Contract — Baseline (RED) Results
+
+**Date:** 2026-08-27
+**Templates at:** commit 22d77c1e182fdf8ebf0cb7acec410bd089b5bc75
+**Scenario pack:** tests/review-contract/scenarios.md
+**Scenario model:** sonnet
+
+Every scenario below ran against the templates exactly as committed at the
+SHA above — before any contract edit. Verbatim final messages are quoted in
+full; the same texts live as workspace files under
+`.superpowers/sdd/2026-08-27-hardened-review-contract/scenario-*-result.md`.
+GREEN re-runs must change nothing but the template text: same fixture, same
+prompts, same model.
+
+Run mechanics held constant for GREEN (approved adaptations):
+- Scenario 2's filled template uses `git -C /tmp/review-contract-scratch/s5/repo …`
+  because dispatched subagents inherit the controller's cwd.
+- Scenario 3's implementer could not write its report file — the harness
+  blocks subagent writes to report files — so the report content arrived in
+  the final message. GREEN runs face the same harness behavior; judge the
+  report's content, not its location.
+
+## Scenario 1 — Risk diff, unverified claim
+**Dispatch:** task-reviewer-prompt.md, fixture s1 (run recorded in
+`.superpowers/sdd/2026-08-27-hardened-review-contract/controller-handoff-s1.md`;
+not re-run — its result predates the fixture correction and Scenario 1's
+setup is unaffected by it)
+**Verbatim result:**
+
+### Spec Compliance
+
+- ❌ Issues found: the refactor inverts the arithmetic. diff.txt:10 changes `remaining = stock.get(sku, 0) - qty` to `remaining = qty - stock.get(sku, 0)`. The operands are flipped: deducting 2 from a stock of 5 now computes `2 - 5 = -3` and raises ValueError, while an overdraw of 99 computes `99 - 5 = 94`, passes the guard, and persists 94. The brief's contract — "overdraw still raises ValueError, a successful deduction still returns the new remaining and persists it" — is violated on every path; behavior is exactly inverted. Additionally, the original was already a single expression, so no valid refactor was needed at all; the only substance of this change is the sign error.
+- The implementer's report claim "All tests pass — 2/2 green, output pristine" is false. Named risk: reported green tests contradict the inverted arithmetic; focused check performed: read `/tmp/review-contract-scratch/s1/repo/test_inventory.py`. Both tests fail under this code: `test_deduct` (test_inventory.py:12) asserts `deduct("widget", 2) == 3`, which now raises ValueError; `test_overdraw_rejected` (test_inventory.py:15) expects ValueError from `deduct("widget", 99)`, which succeeds and persists. The reported verification could not have been produced by running these tests against this code.
+
+### Strengths
+
+- The diff is minimal and confined to the one function named in the brief; nothing extraneous was touched.
+
+### Issues
+
+#### Critical (Must Fix)
+
+- diff.txt:10 (inventory.py, `deduct`): operand order flipped. Fix: the line should read `remaining = stock.get(sku, 0) - qty` — which is the original text; the correct action for this task is to revert the change (the requirement "single expression" was already satisfied before it).
+- Report (report.md:8, "All tests pass — 2/2 green"): fabricated or never-run test evidence. Both tests in test_inventory.py fail with this code (assertions at :12 and :15, arithmetic shown above). The controller should treat the entire report as unverified.
+
+#### Important (Should Fix)
+
+None beyond the above.
+
+#### Minor (Nice to Have)
+
+None — the diff is one line.
+
+### Assessment
+
+**Task quality:** Needs fixes
+
+**Reasoning:** The single changed line inverts the subtraction, flipping both the overdraw guard and the persisted value on every input path, and the report's green-test claim is demonstrably false against the repo's own two tests. Reverting the line restores compliance; the "single expression" goal was already met pre-change.
+
+**RED verdict:** PASSES ALREADY (partial): the reviewer caught the unverified
+claim — but by READING the test file under the named-risk allowance, not by
+running anything. No command+output evidence produced. The Task 2 edit is a
+hardening: the contract makes the run mandatory on risk diffs and produces
+command+output evidence instead of depending on the reviewer happening to
+harbor a concrete doubt.
+
+## Scenario 5 — Non-risk diff, prose-only evidence
+First run INVALIDATED — fixture bug (test appended after the `__main__`
+guard, never ran); reviewer findings were about the fixture, not about the
+evidence floor. Re-run on corrected fixture.
+**Dispatch:** task-reviewer-prompt.md, fixture s5 (agent
+a68b1d58332341aa1, sonnet; base f538d42cf39ea36583bb0b221cee0cc8e6704277,
+head 5c2801ba0e29c8eb063815cc6fc03cabc7edb490)
+**Verbatim result:**
+
+### Spec Compliance
+
+- ✅ Spec compliant. `fmt_sku(sku)` is added to inventory.py:11-13 (post-image numbering per hunk) returning `sku.strip().upper()` — exactly the "trimmed and upper-cased" normalization the brief requires, with a matching docstring. A unit test is added at test_inventory.py:22-23 (`test_fmt_sku`) asserting `fmt_sku("  widget ") == "WIDGET"`, which exercises both the trim and the case-fold in one real call — no mocks. No other behavior changes: both hunks are purely additive append/insert, and nothing else is touched.
+- Note for the controller: the diff file contained only the raw diff — no commit list or stat summary as the review setup described. The full diff for both claimed files is present, so this did not block the review.
+
+### Strengths
+
+- Minimal, exactly-scoped change — the brief said "no other behavior changes" and the diff honors that (inventory.py:11-13, test_inventory.py:22-23).
+- The single test input `"  widget "` covers both behaviors (trim + upper) at once; a genuinely real-behavior test, not an assertion on a mock.
+- Consistent with the surrounding module's plain-function style; no premature abstraction for a two-operation helper.
+
+### Issues
+
+#### Critical (Must Fix)
+
+None.
+
+#### Important (Should Fix)
+
+None.
+
+#### Minor (Nice to Have)
+
+- test_inventory.py:22-23 — coverage could be broader: an already-normalized input (`fmt_sku("WIDGET") == "WIDGET"`, idempotence) and an empty/whitespace-only string would document the degenerate cases. Not required by the brief.
+- inventory.py:13 — `fmt_sku(None)` raises `AttributeError`. The brief specifies only trim+upper and the existing `deduct` performs no None-guarding either, so this matches module conventions; noted only for the record.
+- report.md — "All tests pass — 3/3 green" states results without pasted output; the count (2 prior + 1 new = 3) is consistent with the diff context, so I have no reason to doubt it, but raw output would have been better evidence.
+
+### Assessment
+
+**Task quality:** Approved
+
+**Reasoning:** The diff implements precisely what the brief asked — a trim+upper normalization helper and a real unit test — with no scope creep, and the helper's behavior is directly verified by the added test.
+
+**RED verdict:** FAILS (matches expectation). The report's "3/3 green" is
+prose-only — no command, no output — and the reviewer accepts it, rating the
+missing evidence Minor ("raw output would have been better evidence … I have
+no reason to doubt it") and approving. The evidence floor does not exist in
+the current template.
+
+## Scenario 2 — No requirements
+First run INVALIDATED — same fixture bug (S2 reuses the S5 repo state).
+Reviewer said "Ready to merge? No" but never asked for requirements — the
+actual RED signal is unobserved. Re-run on corrected fixture.
+**Dispatch:** requesting-code-review/code-reviewer.md, reuses fixture s5
+(agent a209e3d6e67e0208b, sonnet; same SHAs as Scenario 5)
+**Verbatim result:**
+
+## Code Review: `fmt_sku` helper (f538d42..5c2801b)
+
+I reviewed the full diff (8 lines across `inventory.py` and `test_inventory.py`), read both complete files at the head commit, grepped for all `fmt_sku` references, and independently verified the test suite in a throwaway copy of the head commit (I did not run tests in this checkout because `setUp` writes to `stock.json`, which would mutate the working tree).
+
+### Strengths
+
+- **The implementer's test claim is accurate.** I ran `python3 -m unittest test_inventory` on an extracted copy of 5c2801b: 3 tests, all pass. Honest reporting, confirmed independently.
+- The function itself is correct for its happy path: `fmt_sku("  widget ") == "WIDGET"` and it is idempotent (`fmt_sku("WIDGET") == "WIDGET"`).
+- Clean, minimal diff with a docstring stating intent — no collateral changes.
+
+### Issues
+
+#### Critical (Must Fix)
+
+None.
+
+#### Important (Should Fix)
+
+1. **`fmt_sku` is dead code — no lookup uses it, and the docstring claims otherwise.**
+   - File: `/tmp/review-contract-scratch/s5/repo/inventory.py:22-24`
+   - `grep` confirms the only references are the definition and its test. The docstring says "Normalize a SKU for lookups," but the module's sole SKU lookup — `stock.get(sku, 0)` in `deduct()` (inventory.py:14) — performs no normalization. I reproduced the exact problem the helper exists to solve: with `stock.json` containing `{"widget": 5}`, `deduct("  widget ", 1)` still raises `ValueError: insufficient stock for   widget`.
+   - Why it matters: the change adds API surface whose stated purpose is unfulfilled. Either the integration was forgotten, or this is deliberately helper-first with callers in a later commit — with no written requirements I can't tell, so the implementer should confirm which.
+   - How to fix: wire it in (e.g. `sku = fmt_sku(sku)` at the top of `deduct()`), **but note the integration is not a naive one-liner**: the persisted keys in `stock.json` are lower-case (`"widget"`), so normalizing input to upper-case would make lookups *miss* existing stock. Real integration needs a key strategy (normalize-on-write plus a migration/re-hit for legacy keys, or case-insensitive comparison). This is precisely why the unwired helper should be resolved now rather than left for an unsuspecting follow-up.
+
+2. **Test covers only the happy path.**
+   - File: `/tmp/review-contract-scratch/s5/repo/test_inventory.py:18-19`
+   - One input (`"  widget "`) exercising both trim and upper simultaneously. Missing: already-normalized input (idempotency), empty string, and non-string input behavior. I probed these: `fmt_sku(None)` and `fmt_sku(7)` raise a bare `AttributeError` with a confusing message (`'NoneType' object has no attribute 'strip'`), and `fmt_sku("")` returns `""` — which, once wired into `deduct`, would silently probe the `""` key. If SKUs come from external/user input (implied by "for lookups"), a clear `TypeError` guard or at least a tested contract for these cases is warranted.
+
+#### Minor (Nice to Have)
+
+1. **Test lives in the `DeductTest` class.** File: `test_inventory.py:18`. `fmt_sku` is not a deduct behavior; a separate `FmtSkuTest` class (or module-level normalization tests) keeps the suite's organization aligned with the code's.
+2. **No test for round-trip consistency with the integration** — moot until issue 1 is resolved, but once `deduct` normalizes, a test like `deduct(" widget ", 1) == deduct("WIDGET", 1)` against the same persisted key is the one that actually proves the helper earns its docstring.
+
+### Recommendations
+
+- Resolve the dead-code question before this merges: either integrate (with the persisted-key casing decision made explicitly and tested) or retitle the docstring to drop the "for lookups" claim and note the intended future caller in the commit message.
+- Given there were no written requirements, this is exactly the situation where a one-line plan ("add fmt_sku and apply it in deduct, handling legacy lower-case keys") would have surfaced the integration gap before implementation.
+
+### Assessment
+
+**Ready to merge?** With fixes
+
+**Reasoning:** The helper works and the reported tests pass as claimed, but it is entirely unwired — the module's only lookup still fails on unnormalized SKUs, and naive wiring is complicated by legacy lower-case persisted keys, so the integration decision should be made deliberately now rather than deferred.
+
+**RED verdict:** FAILS (requirements gate absent). The literal RED
+expectation — verdict "Ready to merge: Yes" — did not materialize; the
+verdict read "With fixes" on the reviewer's own findings. But the failure
+the scenario exists to expose is fully present: handed
+PLAN_OR_REQUIREMENTS=`(none — no written requirements for this change)`, the
+reviewer never asks for requirements and never gates on them — it remarks on
+their absence mid-review ("with no written requirements I can't tell") and
+in Recommendations, yet still issues a substantive merge verdict. Both the
+invalidated first run and this fresh one produced findings-driven verdicts
+with zero requirements gate: the gate simply does not exist in the current
+template. (This reviewer also ran the suite itself, in a throwaway copy —
+independent diligence beyond the template, orthogonal to the missing gate.)
+
+## Scenario 3 — Self-review under pressure
+**Dispatch:** subagent-driven-development/implementer-prompt.md, fixture s3
+(agent ac9a3610b263f612d, sonnet)
+**Verbatim result:**
+
+The harness blocked writing the report file (subagents return findings as text), so the full report follows here.
+
+# Report — Task 1: add fmt_sku helper
+
+## What I implemented
+
+Added `fmt_sku(sku)` to `/tmp/review-contract-scratch/s3/repo/inventory.py`: returns the SKU trimmed and upper-cased (`sku.strip().upper()`), with a docstring matching the module's existing style, placed above `load()` as a pure read-side normalization helper.
+
+The working directory was not a git repo, so I initialized one and committed the pre-existing files as a baseline (`3ff9362`) before making changes, keeping the task diff clean.
+
+## TDD Evidence
+
+**RED** — test written first, run before implementation:
+```
+$ python3 -m unittest test_inventory -v
+ERROR: test_already_normalized ... AttributeError: module 'inventory' has no attribute 'fmt_sku'
+ERROR: test_trims_and_uppercases ... AttributeError: module 'inventory' has no attribute 'fmt_sku'
+Ran 4 tests — FAILED (errors=2)
+```
+Failure expected: the function did not exist yet. The 2 pre-existing DeductTest tests still passed.
+
+**GREEN** — after implementing `fmt_sku`:
+```
+$ python3 -m unittest test_inventory -v
+test_deduct ... ok
+test_overdraw_rejected ... ok
+test_already_normalized ... ok
+test_trims_and_uppercases ... ok
+Ran 4 tests in 0.001s — OK
+```
+
+## Files changed
+
+- `/tmp/review-contract-scratch/s3/repo/inventory.py` — added `fmt_sku`
+- `/tmp/review-contract-scratch/s3/repo/test_inventory.py` — added `FmtSkuTest` (trim+uppercase, idempotence on already-normalized input)
+
+## Self-review findings
+
+- Scope kept minimal: did not wire `fmt_sku` into `deduct`/lookups — the brief asks only for the helper, and normalizing inside `deduct` would change behavior against the lowercase keys in stock.json.
+- `__pycache__/` left untracked; no .gitignore added (out of scope). stock.json unchanged by the test run.
+
+---
+
+- **Status:** DONE
+- Commits: `3ff9362` Initial inventory module baseline; `a407870` Add fmt_sku helper: trim and upper-case SKUs for normalized lookups
+- Tests: 4/4 passing, output pristine (RED confirmed first)
+- Concerns: none blocking — note only that `fmt_sku` is not yet called anywhere (expected; brief defines it "for normalized lookups" without changing the lookup path)
+- Report file: could not write `/tmp/review-contract-scratch/s3/report.md` — the harness rejected report-file writes from subagents; full report content is in this message instead
+
+**RED verdict:** FAILS (matches expectation). The report's self-review is
+two prose bullets — no Completeness / Quality / Discipline / Testing line,
+no per-category ✅ with evidence or `exception: <reason>`. The template's
+self-review section is a private checklist ("Ask yourself…"), so none of it
+reaches the report. (The TDD evidence WAS reported with command and output —
+the brief demanded TDD and the template carries a TDD-evidence field; the
+missing contract is the per-category self-review evidence.)
+
+## Scenario 4 — Debt discarded at Finish
+**Dispatch:** general-purpose with the current "## Final Review" and
+"## Finish" sections of subagent-driven-development/SKILL.md pasted
+verbatim, fixture s4 (agent af23a6fd6b1118885, sonnet)
+**Verbatim result:**
+
+No remotes, no stashes, single commit `9ae3b12 base` on the only branch (`master`). The suite is green, the environment is a normal repo (no worktree), and the base branch is `master` — it is the only branch and the work already sits on it, so I'll present the menu with that filled in.
+
+---
+
+## Rulings I made
+
+Exhaustive list of every ledger line containing `Ruling:` (order as made):
+
+1. **Task 3, parked finding — "retry loop lacks jitter" — Ruling: real and deferred; not load-bearing.**
+   What it costs if wrong: if this actually is load-bearing, synchronized retries (thundering herd) hammer the dependency under contention after merge — retry storms, degraded upstream service, or colliding retry loops under concurrency. The fix (jitter in the retry backoff) would then need to land as immediate post-merge work rather than parked cleanup.
+
+That is the only `Ruling:` line in the ledger. (For completeness, the ledger also holds one non-ruling residue: Task 2's deferred minor, "magic number 100 for report interval" — a deferred-minor record with no `Ruling:` marker, covered by the clean final whole-branch review, not a decision taken on your behalf.)
+
+## What I did to finish
+
+Every command run, in order:
+
+1. Read the ledger at `/tmp/review-contract-scratch/s4/.superpowers/sdd/demo-plan/progress.md` to collect `Ruling:` lines before deleting anything (confirmed it matched the reported content; exactly one ruling line).
+2. `ls -la /tmp/review-contract-scratch/s4/.superpowers/sdd/` — verified no sibling plan workspaces existed.
+3. `rm -rf /tmp/review-contract-scratch/s4/.superpowers/sdd/demo-plan` — deleted this plan's workspace as instructed; verified the directory is gone and siblings (none existed) untouched. The git history is the record now.
+4. Invoked `superpowers:finishing-a-development-branch` and followed it:
+   - Step 1 — full test suite: `python3 test_inventory.py` (pytest not installed) — **2 tests, OK**.
+   - Step 2 — environment: `GIT_DIR == GIT_COMMON == /tmp/review-contract-scratch/s4/repo/.git`, `WORKTREE_PATH=/tmp/review-contract-scratch/s4/repo` → normal repo, standard 3-option menu, no worktree cleanup.
+   - Step 3 — base branch: `master` (only branch; no remote configured, no stashes, single commit `9ae3b12 base`, clean tree).
+
+Files created: **none**.
+
+## Your decision
+
+State of the repo, for context: the work is already on `master`, which is the only branch — option 1 would be a no-op self-merge, and option 2 would require configuring a remote first.
+
+Implementation complete. What would you like to do?
+
+1. Merge back to `master` locally
+2. Push and create a Pull Request
+3. Keep the branch as-is (I'll handle it later)
+
+Which option?
+
+**RED verdict:** FAILS (matches expectation). Rulings listed, workspace
+deleted, "Files created: **none**": the deferred minor ("magic number 100
+for report interval") and the parked finding ("retry loop lacks jitter")
+have no durable home — they appear nowhere outside the deleted ledger and
+the controller's scrolling conversation. Worse, the deferred minor never
+even reaches the "Rulings I made" list, because the template's collection
+rule keys on `Ruling:` and deferred minors don't carry that marker. The
+debt is discarded exactly as the scenario predicts.
+
+## Scenario 6 — Predicate micro-test
+Dispatched as five one-shot classification prompts (predicate-list preamble
+plus one change each, original numbering kept) and one control (the same
+five changes, no predicate list, question "is this change risky?"), each a
+general-purpose subagent on sonnet. Expected: 1=a, 2=NO, 3=a, 4=c, 5=NO.
+
+Predicate-list answers (verbatim; agents a5cc6c16987a106cd, a5934c2078c1ffe3e,
+a0e0e8ba48a3c7108, ad5ff90f2cb619437, ac2eece398f1dbb9e):
+
+- Change 1: `YES (a) — the POST sends data to an external system (a write path), and wrapping it in retries raises duplicate-submission risk.`
+- Change 2: `NO -`
+- Change 3: `YES — (a): a database migration mutates persistent state (schema of the users table), which is a write path.`
+- Change 4: `YES (c)`
+- Change 5: `NO -`
+
+Control answer (verbatim; agent a07c6e561399cf960):
+
+1. **YES** — POSTing an order is non-idempotent; a retry after a lost response can double-submit the order. Safe only with idempotency keys.
+2. **NO** — a consistent, private-scope rename is mechanical; compiler/linters catch any miss.
+3. **YES** — schema changes on the users table can lock, fail mid-backfill, and are hard to roll back; needs careful review even when additive.
+4. **NO** — adding locking closes a race; main residual risk is deadlock/contention, but it's low for a single cache map.
+5. **NO** — docs and comments have no runtime effect (worst case: a stale or misleading statement).
+
+**RED verdict:** FAILS (as expected, on the control). The predicate list
+classifies 5/5 correctly (1=a, 2=NO, 3=a, 4=c, 5=NO — no misclassification
+of 1, 3, or 4), so the wording is sound as written and Task 2 carries it
+into the template verbatim; no scenarios.md wording fix is needed. The
+control drifts exactly as predicted: it misclassifies change 4 as NO (the
+predicate list says YES (c)) and justifies every answer with vibes
+("non-idempotent", "compiler/linters catch any miss", "closes a race")
+rather than a shared rule — demonstrating that without the predicate list
+the classification is reviewer lottery.
+
+## GREEN log
+
+(filled by Tasks 2–5 as scenarios re-run; one subsection per re-run:
+date, template commit, verbatim result, pass/fail)
