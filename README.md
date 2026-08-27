@@ -1,5 +1,35 @@
 # Superpowers
 
+## This Fork (ldt116)
+
+This is a fork of [obra/superpowers](https://github.com/obra/superpowers), fine-tuned to change how the harnesses behave.
+
+**Tuned differences from upstream:**
+
+1. **Subagent-driven development is the default.** After saving a plan, `writing-plans` goes straight into `subagent-driven-development` — it no longer asks which execution approach to use. `executing-plans` is the fallback for harnesses without subagent access.
+2. **Independent review when executing plans inline.** `executing-plans` runs an independent review after every task — a dispatched reviewer subagent, or a fresh-eyes self-review when subagents are unavailable — plus a final whole-plan review before finishing.
+
+See `CLAUDE.md` for the divergence list agents working in this repo follow.
+
+### Installing from this fork
+
+Install from this repository instead of the official marketplaces.
+
+**Claude Code:**
+
+```text
+/plugin marketplace add ldt116/superpowers
+/plugin install superpowers@superpowers-dev
+```
+
+**Other harnesses:** use the install commands in the upstream README below, replacing `obra/superpowers` with `ldt116/superpowers`.
+
+To update after the fork changes, open `/plugin`, update the `superpowers-dev` marketplace, then update or reinstall Superpowers.
+
+---
+
+*Everything below is the original upstream README, kept for reference.*
+
 Superpowers is a complete software development methodology for your coding agents, built on top of a set of composable skills and some initial instructions that make sure your agent uses them.
 
 ## Table of Contents

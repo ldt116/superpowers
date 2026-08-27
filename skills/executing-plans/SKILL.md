@@ -7,7 +7,7 @@ description: Use when you have a written implementation plan to execute in a sep
 
 ## Overview
 
-Load plan, review critically, execute all tasks, report when complete.
+Load plan, review critically, execute all tasks with an independent review after each, run a final whole-plan review, report when complete.
 
 **Announce at start:** "I'm using the executing-plans skill to implement this plan."
 
@@ -29,10 +29,30 @@ For each task:
 2. Follow each step exactly (plan has bite-sized steps)
 3. Run verifications as specified
 4. Mark as completed
+5. Run the independent task review below - **before** starting the next task
 
-### Step 3: Complete Development
+#### Independent Task Review (every task)
 
-After all tasks complete and verified:
+You just implemented this task, which makes you the worst reviewer of it. Get independent eyes on it:
+
+1. Build the review package: the task's section from the plan, what it was supposed to produce, and its commit range (`git diff BASE_SHA..HEAD_SHA` for just this task)
+2. Dispatch a fresh reviewer subagent using the prompt template at `../requesting-code-review/code-reviewer.md`
+3. Verify each finding is real before acting on it - **REQUIRED SUB-SKILL:** Use superpowers:receiving-code-review. Reproduce the problem; don't perform agreement
+4. Critical findings: fix, commit, and have the reviewer re-check the fix
+5. Non-critical findings: record them for the final review
+
+**No subagent access?** Fall back to a fresh-eyes self-review: re-read this task's diff line by line against the task spec - implementation matches the spec, the verification commands actually ran and passed, nothing extra slipped in. Reading is not verifying: re-run the verification commands.
+
+### Step 3: Final Whole-Plan Review
+
+After all tasks complete:
+1. Dispatch one independent review of the whole branch diff against the full plan (same reviewer prompt template)
+2. Fix critical findings; re-run the affected tasks' verifications
+3. Report non-critical findings to your human partner with your disposition of each
+
+### Step 4: Complete Development
+
+After the final review is clean:
 - Announce: "I'm using the finishing-a-development-branch skill to complete this work."
 - **REQUIRED SUB-SKILL:** Use superpowers:finishing-a-development-branch
 - Follow that skill to verify tests, present options, execute choice
@@ -44,6 +64,7 @@ After all tasks complete and verified:
 - Plan has critical gaps preventing starting
 - You don't understand an instruction
 - Verification fails repeatedly
+- Task review surfaces a finding that invalidates the plan's approach
 
 **Ask for clarification rather than guessing.**
 
@@ -59,6 +80,8 @@ After all tasks complete and verified:
 - Review plan critically first
 - Follow plan steps exactly
 - Don't skip verifications
+- Independent review after every task - completed is not verified
+- Final whole-plan review before finishing
 - Reference skills when plan says to
 - Stop when blocked, don't guess
 - Never start implementation on main/master branch without explicit user consent
