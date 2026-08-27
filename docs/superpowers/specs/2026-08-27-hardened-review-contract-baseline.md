@@ -802,9 +802,11 @@ partner; this log records Steps 1, 2, and 4 only).
   TIGHTENED, one line in `skills/requesting-code-review/code-reviewer.md`:
   - Before: `    **Requirements gate:** [PLAN_OR_REQUIREMENTS] is your ground truth —`
   - After:  `    **Requirements gate:** the Requirements / Plan section above is your ground truth —`
-  Exactly one `[PLAN_OR_REQUIREMENTS]` token remains in the file (the
-  field slot), verdict-phrase wrap preserved. Scenarios 2 (its only
-  consumer) re-run in both passes below.
+  Exactly one `[PLAN_OR_REQUIREMENTS]` token remains inside the prompt
+  fence (the field slot); the Placeholders legend outside the fence
+  keeps a backticked reference dispatch tooling never fills.
+  Verdict-phrase wrap preserved. Scenarios 2 (its only consumer)
+  re-run in both passes below.
 - Own re-read of the GREEN log, no changes: S1 diff.txt package shape
   differs from real `scripts/review-package` output (the template
   sentence is accurate for the real script; repacking would break
@@ -835,7 +837,7 @@ from transcripts into `scenario-*-refactor-passA-result.md` in
 
 - **S1** (agent a6692d637a7972ebc; base 03bdcbd8, head 081066d3):
   PASS. Risk diff classified as write path (predicate a); reviewer ran
-  `python3 -m unittest test_inventory -v` itself at the head —
+  `python3 -m unittest -v test_inventory` itself at the head —
   `FAILED (failures=1, errors=1)` — with command and output in the
   report; Critical operand-inversion finding; "Task quality: Needs
   fixes".
@@ -917,3 +919,38 @@ wording change was triggered by either pass. Fixture verified
 dispatch: `claudecode/demo-plan-review-debt` (id 161) still exactly 2
 open issues, updated_at 14:05:36 — predating all Task 7 dispatches;
 no new repos; both 4b runs took the register route.
+
+## In-session verification appendix
+
+**Status: SKIPPED — by explicit human-partner decision, 2026-08-27.**
+
+The plan's Task 7 Step 3 (reinstall the plugin from this fork via
+`/plugin` → update `superpowers-ldt116` → update/reinstall Superpowers,
+then dispatch one real review seat from the freshly cached template) was
+offered to the human partner, who chose to skip it.
+
+What this means, stated plainly:
+
+- **Verified by this document:** the edited template CONTENT — every
+  scenario dispatch pasted the template text directly from the repo's
+  `skills/` files, so RED, GREEN, and both REFACTOR passes exercised the
+  exact committed wording (pass fidelity checked against transcripts).
+- **NOT verified this session:** the installed-plugin pathway — that a
+  marketplace update + reinstall actually refreshes the cache the
+  consuming sessions load. The fork's own rule ("verify skill changes by
+  reinstalling the plugin from this fork and checking behavior in a real
+  session", CLAUDE.md) therefore remains unsatisfied for this change
+  set. The next session that updates the plugin carries this risk: stale
+  cache serving pre-contract templates.
+
+Recommended recovery (one command, any later session): after updating
+the plugin, dispatch any code-reviewer seat and confirm the returned
+report contains the tiered-verification language and, when requirements
+are absent, the limited verdict — then mark this appendix amended.
+
+Precision fixes riding in this commit (Task 7 review Minors 1–2): the
+REFACTOR log's (d) bullet now states both remaining
+`[PLAN_OR_REQUIREMENTS]` tokens (in-fence field slot; out-of-fence
+placeholders legend) instead of claiming exactly one; and Pass A's S1
+command citation now quotes the transcript form
+(`python3 -m unittest -v test_inventory`).
