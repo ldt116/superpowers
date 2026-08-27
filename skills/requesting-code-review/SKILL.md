@@ -35,9 +35,15 @@ Dispatch a `general-purpose` subagent, filling the template at [code-reviewer.md
 
 **Placeholders:**
 - `{DESCRIPTION}` - Brief summary of what you built
-- `{PLAN_OR_REQUIREMENTS}` - What it should do
+- `{PLAN_OR_REQUIREMENTS}` - REQUIRED: what it should do (plan file path, task text, or requirements). Never dispatch with it empty — if no written requirements exist, pass `None written — code-only review` so the reviewer applies its requirements gate honestly.
 - `{BASE_SHA}` - Starting commit
 - `{HEAD_SHA}` - Ending commit
+
+**What the reviewer does with your dispatch:** it re-runs risk diffs
+(write paths, auth/secrets/permissions, concurrency, plan-named risks)
+at the head — earlier runs do not transfer. Everything else, your
+DESCRIPTION must carry the exact verification command and its output;
+prose verdicts come back as findings.
 
 **3. Act on feedback:**
 - Fix Critical issues immediately

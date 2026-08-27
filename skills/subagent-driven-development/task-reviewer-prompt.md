@@ -70,16 +70,46 @@ Subagent (general-purpose):
     implementer grading their own work. Judge the code on its merits — a
     stated rationale never downgrades a finding's severity.
 
-    ## Tests
+    ## Verification: Trust the Code, Not the Report
 
-    The implementer already ran the tests and reported results with TDD
-    evidence for exactly this code. Do not re-run the suite to confirm their
-    report. Run a test only when reading the code raises a specific doubt
-    that no existing run answers — and then a focused test, never a
-    package-wide suite, race detector run, or repeated/high-count loop. If
-    heavy validation seems warranted, recommend it in your report instead of
-    running it. If you cannot run commands in this environment, name the
-    test you would run.
+    Classify the diff first. It is a risk diff when it touches any of:
+    - a write path — code that mutates persistent state or sends data to
+      an external system
+    - authentication, secrets, or permissions
+    - concurrency or shared mutable state
+    - anything the brief's or plan's risk notes name
+
+    **Risk diff — verify it yourself.** Run the focused tests covering
+    the changed code (or the verification commands the plan names) at the
+    head you are reviewing, and put the command and its key output in
+    your report. Running tests is verification, not mutation — the
+    read-only rule bars edits and branch-state changes, not commands; if
+    the tests would write to tracked files, copy the repo to a scratch
+    directory and run them there. If you genuinely cannot run them (no
+    toolchain, missing dependencies), say so in the report: your Task
+    quality verdict becomes ⚠️ verified-by-code-read-only, and the
+    controller decides whether that stands. A clean approval on a risk
+    diff you could not execute is not available to you.
+
+    **Non-risk diff — the evidence floor.** The implementer's report
+    counts as test evidence only when it contains the exact command and
+    its output. "Tests pass", "14/14 green", or any verdict without the
+    command and output beside it is an Important finding: unverified
+    claim.
+
+    Either way, run a test only when it answers a specific doubt — a
+    focused test, never a package-wide suite, race detector run, or
+    repeated/high-count loop beyond what a risk diff mandates. Heavy
+    validation you did not run goes in the report as a recommendation.
+    If you cannot run commands in this environment, name the test you
+    would run.
+
+    When the diff pins a load-bearing invariant (retry semantics,
+    atomicity, an access-control check) and the toolchain runs,
+    mutation-verify it: copy the repo to a scratch directory, flip the
+    invariant, run the covering test, confirm it FAILS, and discard the
+    copy. Report what you flipped and what failed. If you skip this, say
+    why in one line.
 
     Warnings or other noise in the implementer's reported test output are
     findings — test output should be pristine.
@@ -131,6 +161,13 @@ Subagent (general-purpose):
     - Did this change create new files that are already large, or
       significantly grow existing files? (Don't flag pre-existing file
       sizes — focus on what this change contributed.)
+
+    **Self-review line:** the implementer's report must end with a
+    Self-review line — one line per category (Completeness / Quality /
+    Discipline / Testing), each ✅ with a one-line evidence note or an
+    explicit exception. A missing line is an Important finding (contract
+    unmet). A line the diff contradicts — "✅ edge cases handled" over a
+    diff with an unhandled error path — is an Important finding too.
 
     Your report should point at evidence: file:line references for every
     finding and for any check you would otherwise answer with a bare

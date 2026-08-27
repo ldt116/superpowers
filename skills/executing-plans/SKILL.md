@@ -41,7 +41,13 @@ You just implemented this task, which makes you the worst reviewer of it. Get in
 4. Critical findings: fix, commit, and have the reviewer re-check the fix
 5. Non-critical findings: record them for the final review
 
-**No subagent access?** Fall back to a fresh-eyes self-review: re-read this task's diff line by line against the task spec - implementation matches the spec, the verification commands actually ran and passed, nothing extra slipped in. Reading is not verifying: re-run the verification commands.
+The reviewer template re-runs risk diffs (write paths,
+auth/secrets/permissions, concurrency, plan-named risks) at the head —
+your earlier runs do not transfer. For everything else, carry the task's
+verification command and output into the dispatch; prose verdicts come
+back as findings.
+
+**No subagent access?** Fall back to a fresh-eyes self-review: re-read this task's diff line by line against the task spec - implementation matches the spec, the verification commands actually ran and passed, nothing extra slipped in. Reading is not verifying: re-run the verification commands. For non-risk diffs, the evidence floor is the command and its output in your task record — write it down as you run it, not from memory.
 
 ### Step 3: Final Whole-Plan Review
 

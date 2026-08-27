@@ -72,5 +72,31 @@ assert_equal(
     "Codex manifest must declare empty hooks {} to suppress hooks/hooks.json auto-discovery",
 )
 
+# CLAUDE.md divergence #3: the fork identity must hold in BOTH marketplaces.
+# The Claude Code marketplace manifest carries the fork name, and the Claude
+# plugin manifest's repository points at the fork (author credits stay with
+# upstream).
+claude_marketplace = repo_root / ".claude-plugin" / "marketplace.json"
+if not claude_marketplace.exists():
+    raise AssertionError(".claude-plugin/marketplace.json must exist")
+
+claude_marketplace_data = json.loads(claude_marketplace.read_text(encoding="utf-8"))
+assert_equal(
+    claude_marketplace_data.get("name"),
+    "superpowers-ldt116",
+    "claude-plugin marketplace name",
+)
+
+claude_manifest = repo_root / ".claude-plugin" / "plugin.json"
+if not claude_manifest.exists():
+    raise AssertionError(".claude-plugin/plugin.json must exist")
+
+claude_manifest_data = json.loads(claude_manifest.read_text(encoding="utf-8"))
+assert_equal(
+    claude_manifest_data.get("repository"),
+    "https://github.com/ldt116/superpowers",
+    "claude-plugin manifest repository",
+)
+
 print("Codex marketplace manifest looks good")
 PY
