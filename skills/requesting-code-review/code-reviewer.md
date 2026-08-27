@@ -20,7 +20,7 @@ Subagent (general-purpose):
 
     [PLAN_OR_REQUIREMENTS]
 
-    **Requirements gate:** [PLAN_OR_REQUIREMENTS] is your ground truth —
+    **Requirements gate:** the Requirements / Plan section above is your ground truth —
     read it before judging the diff. If the dispatch provided no plan,
     spec, requirements, or linked issue, say so at the top of your report
     and ask for them. Until they arrive, your review is code-only:

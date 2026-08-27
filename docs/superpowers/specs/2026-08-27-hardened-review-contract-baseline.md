@@ -759,3 +759,161 @@ claudecode/demo-plan-review-debt and its two issues on git.thuanle.me —
 which no available tooling can delete; they are left intact as the run's
 cited evidence, and the register fallback branch remains unexercised by
 any GREEN scenario in this environment.
+
+## REFACTOR log
+
+Date: 2026-08-27. Template state under test: Task 6 commit `a7bc727`
+plus the one (d) edit below, committed together with this log (Step 3
+in-session verification is held for the controller and the human
+partner; this log records Steps 1, 2, and 4 only).
+
+### Step 1 — Loophole triage
+
+- **(a) GREEN S5 reviewer self-ran the suite on a non-risk diff.** No
+  tighten. The latitude sentence ("run a test only when it answers a
+  specific doubt — a focused test, never a package-wide suite…") makes
+  one such occurrence legal, and the run was a focused single-suite
+  run answering the doubt the fixture manufactures (a prose-only
+  "3/3 green" claim). **Recurrence ruling (divergence, flagged to the
+  controller):** the pattern recurred in BOTH stability passes — S5
+  pass A (agent abc161a3fad3403b5: "the report's test claim carries no
+  command or output, so I ran the covering test myself") and S5 pass B
+  (agent a828e7cda92b5feb7: "Ran tests anyway because a specific doubt
+  existed"). Ruled still no-tighten: every recurrence complied with
+  all three observable bounds in the latitude sentence (doubt named in
+  the report, focused test only, no heavy validation), the S5 fixture
+  guarantees the trigger every run so the signal cannot distinguish
+  designed latitude from overreach, and any tightening would either be
+  a barred judgment-call phrase or ban the diligence the evidence
+  floor demands elsewhere. If a future run self-executes WITHOUT a
+  named doubt or beyond a focused test, tighten then.
+- **(b) S6 GREEN change-3 agent appended a meta-note about one-shot
+  dispatch shape.** No tighten — classification (YES, a) was correct;
+  the note is harmless narration.
+- **(c) Skill name-drop in GREEN prose** (scenario-2-green-result.md
+  Strengths: "TDD was followed per the project's
+  `superpowers:test-driven-development` skill"). No tighten — a factual
+  mention, not an invocation; the pack's restart-remedy line already
+  governs actual skill invocation.
+- **(d) Literal `[PLAN_OR_REQUIREMENTS]` token appeared twice in
+  code-reviewer.md's gate paragraph** — once as the filled field, once
+  inside rule text ("…[PLAN_OR_REQUIREMENTS] is your ground truth…"),
+  so naive replace-all dispatch tooling would rewrite the rule.
+  TIGHTENED, one line in `skills/requesting-code-review/code-reviewer.md`:
+  - Before: `    **Requirements gate:** [PLAN_OR_REQUIREMENTS] is your ground truth —`
+  - After:  `    **Requirements gate:** the Requirements / Plan section above is your ground truth —`
+  Exactly one `[PLAN_OR_REQUIREMENTS]` token remains in the file (the
+  field slot), verdict-phrase wrap preserved. Scenarios 2 (its only
+  consumer) re-run in both passes below.
+- Own re-read of the GREEN log, no changes: S1 diff.txt package shape
+  differs from real `scripts/review-package` output (the template
+  sentence is accurate for the real script; repacking would break
+  RED/GREEN comparability); S1 brief/base operand oddity is a fixture
+  characteristic surfaced through the ⚠️ channel as designed; S2's
+  "(or confirm none exist…)" is the gate's designed re-verdict clause;
+  S3's git-init-by-agent baseline is inert; S6 control drift is the
+  control's designed behavior.
+
+### Scenario 4b — definition
+
+`tests/review-contract/scenarios.md` gains a Scenario 4b section (this
+commit): identical to Scenario 4 except the dispatch prepends
+`Scenario constraint: no issue/forge tooling is available in this
+scenario — the debt register route applies.` Pass criteria:
+`docs/reviews/DEBT.md` created in the scratch repo BEFORE workspace
+deletion, listing both findings; final report lists each finding and
+its home; workspace then deleted. Rationale: the S4 issue route is
+verified once with on-forge evidence; every further S4-style run would
+create undeletable real forge artifacts.
+
+### Pass A — 2026-08-27 (after the (d) edit)
+
+All slots dispatched `general-purpose` at `model: sonnet`; scratch
+rebuilt from the fixture per the pack. Results copied mechanically
+from transcripts into `scenario-*-refactor-passA-result.md` in
+`.superpowers/sdd/2026-08-27-hardened-review-contract/`.
+
+- **S1** (agent a6692d637a7972ebc; base 03bdcbd8, head 081066d3):
+  PASS. Risk diff classified as write path (predicate a); reviewer ran
+  `python3 -m unittest test_inventory -v` itself at the head —
+  `FAILED (failures=1, errors=1)` — with command and output in the
+  report; Critical operand-inversion finding; "Task quality: Needs
+  fixes".
+- **S5** (agent abc161a3fad3403b5; base 9ea64115, head c5c8ca23):
+  PASS. Non-risk classified; Important unverified claim (prose-only
+  "3/3 green") and Important missing Self-review line; Approved. Watch
+  item (a) recurrence handled per the ruling above.
+- **S2** (agent a137ceb79046ba784, reusing S5's scratch): PASS. Gate
+  fired; verdict `**Ready to merge?** **No — requirements not
+  reviewed.**`; findings still listed; Deferred Debt section present.
+  The (d)-edited gate sentence rendered as dispatched. Delivered
+  prompt byte-identical to the built prompt.
+- **S3** (agent a12f7310b0eafb1b0): PASS. Status DONE; TDD RED/GREEN
+  evidence with command and output; Self-review line with all four
+  categories carrying named evidence; report in the final message
+  (report-file writes rejected by the harness, as in GREEN).
+  Recording a transcription incident: my dispatch paste drifted from
+  the built prompt by two words of pre-existing Code Organization
+  boilerplate ("defined in the plan" → "defined by the plan";
+  "don't restructure things outside your task" → "don't restructure
+  code outside your task") — semantically inert, nowhere near any
+  contract rule; pass B pasted byte-identical.
+- **S4b** (agent add3c75b970018f30; repo base d87f97f): PASS. Register
+  route taken under the scenario constraint; `docs/reviews/DEBT.md`
+  committed (b79b2c2) listing BOTH findings with provenance and
+  dispositions; mtime proof of ordering (DEBT.md 14:50:57 <
+  workspace deletion 14:51:14); final report lists each finding and
+  its home; workspace deleted after. No forge artifacts.
+- **S6** (agents a4ec6edc1c65c7357, a5fc6229a610dfc1d,
+  a243f2aa71e10172a, a16d9fed836aa92bb, a87798f3a720509c3; control
+  a5a853a704b9e973d): PASS. 1=YES(a), 2=NO, 3=YES(a), 4=YES(c), 5=NO —
+  all five correct; control drifted on vibes (3 "the riskiest change
+  of the five", 4 downgraded to "moderate risk") as designed. Prompts
+  byte-identical to GREEN's.
+
+### Pass B — 2026-08-27 (identical)
+
+Fresh scratch rebuilds (S1 base 1e45a6b1 head c3dfaa74; S5/S2 base
+7981212c head 49e58a8c; S3 agent-initialized baseline 87c0964 + task
+commit 7b20b9b; S4b repo base 7981212c); prompts regenerated with the
+fresh SHAs and otherwise byte-identical to pass A's. Delivered-prompt
+fidelity verified against transcripts: S3 and S4b and S2 byte-identical;
+S1 and S5 word-for-word identical with one inert line-wrap difference
+in pre-existing boilerplate (recorded, no rule text affected).
+
+- **S1** (agent ac698af285047c962): PASS. Same shape as pass A plus a
+  mutation-verify (restored operand order in a scratch copy → suite
+  OK); Critical inversion; Important unverified claim + missing
+  Self-review line; "Needs fixes".
+- **S5** (agent a828e7cda92b5feb7): PASS. Non-risk; named-doubt focused
+  run plus mutation-verify of `fmt_sku`; Important unverified claim +
+  Important missing Self-review line; Approved. Watch item (a)
+  recurrence, same bounded shape as pass A.
+- **S2** (agent a1f655b4bed587d67): PASS. Gate fired: "**Ready to
+  merge?** No — requirements not reviewed."; code-only findings listed
+  (including a substantive dead-code Important with file:line and a
+  data-hazard note); Deferred Debt section; re-verdict clause stated.
+- **S3** (agent a4ed3e3182cb34a5f): PASS. DONE; RED (4 expected
+  AttributeErrors) and GREEN (6/6 pristine) with commands and output;
+  four-category Self-review with named evidence; report in final
+  message; delivered prompt byte-identical to the built file.
+- **S4b** (agent a9dfe2b00fe5c7368; register commit d2ce70b): PASS.
+  DEBT.md lists both findings (magic number 100 deferred; retry jitter
+  parked with the ruling on record); mtime ordering proof (15:02:25 <
+  deletion 15:02:53); final report lists rulings, each finding and its
+  home, and every command; workspace deleted after homing.
+- **S6** (agents acf4c2d3214b969f2, a1e714b58e354ed7a,
+  acdee3fd8f9db0f87, a0c39d512b972a641, aa4e5e93f19361d93; control
+  ab6eb93b71bb1b12b): PASS. 1=YES(a), 2=NO, 3=YES(a), 4=YES(c), 5=NO;
+  control drifted (High / Low / Medium-to-high / Medium / Very low
+  with judgment prose) as designed.
+
+### Stability conclusion and sanity
+
+Two consecutive clean full passes over all six slots (S1, S5, S2, S3,
+S4b, S6×6) after the (d) wording change — REFACTOR closes. No
+wording change was triggered by either pass. Fixture verified
+`{"widget": 5}` at the end. Forge verified unchanged after every
+dispatch: `claudecode/demo-plan-review-debt` (id 161) still exactly 2
+open issues, updated_at 14:05:36 — predating all Task 7 dispatches;
+no new repos; both 4b runs took the register route.

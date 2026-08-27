@@ -249,6 +249,25 @@ tooling in the scenario), so a debt register file in the repo
 (docs/reviews/DEBT.md) is created and the final report lists each
 deferred finding and where it lives.
 
+## Scenario 4b — Debt register route, no issue tooling (controller)
+
+REFACTOR addition. Identical to Scenario 4 — same setup, same dispatch
+shape — except the dispatch prompt carries this one line up front,
+before the frame's first line:
+
+```text
+Scenario constraint: no issue/forge tooling is available in this scenario — the debt register route applies.
+```
+
+The S4 issue route was verified once with on-forge evidence; every
+further S4-style run creates a real private repo and issues that no
+available tooling can delete, so stability passes run this
+register-route variant in the S4 slot instead.
+
+Pass criteria: `docs/reviews/DEBT.md` created in the scratch repo
+BEFORE workspace deletion, listing both findings; the final report
+lists each finding and its home; the workspace is then deleted.
+
 ## Scenario 6 — Predicate micro-test (wording)
 
 Dispatch five one-shot classification prompts (plus one control), each a
