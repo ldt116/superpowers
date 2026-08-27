@@ -52,6 +52,11 @@ Confirm before merging: merging into the wrong base is expensive to undo.
 
 ## Step 4: Present Options
 
+If the final review deferred any debt (follow-up issues opened or a debt
+register updated), state it before the menu — what was parked and where it
+now lives — so your human partner integrates knowing what was left for
+later.
+
 **Normal repo and named-branch worktree — present exactly these 3 options:**
 
 ```

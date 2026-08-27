@@ -465,6 +465,13 @@ superpowers:requesting-code-review's
 the ledger's deferred-minor and parked lines so it can triage which must be
 fixed before merge.
 
+After triage, before anything is deleted, every deferred or parked finding
+that survives gets a durable home: with issue tooling available (Gitea
+MCP, `gh`, `tea`), open one follow-up issue per actionable cluster — not
+one per nit; otherwise append them to a debt register in the repo
+(`docs/reviews/DEBT.md` unless the project has its own convention). The
+final report lists every deferred finding and where it now lives.
+
 If the final whole-branch review returns findings, dispatch ONE fix subagent
 with the complete findings list — not one fixer per finding.
 Per-finding fixers each rebuild context and re-run suites; a real
@@ -489,10 +496,13 @@ took on your human partner's behalf reach them — they read it and rework
 whatever you got wrong. A ruling that dies with the workspace was a decision
 made in secret.
 
-When the final whole-branch review is clean and its fixes are merged,
-delete this plan's workspace (`rm -rf <workspace>`) — the git history is
-the record now. Sibling directories belong to other plans; leave them
-alone.
+When the final whole-branch review is clean, its fixes are merged, and
+every deferred or parked finding has its recorded home (issue opened or
+register entry appended — listed in your final report), delete this plan's
+workspace (`rm -rf <workspace>`) — the git history and the debt record are
+the record now. A deferred finding with no home is not deferred, it is
+discarded; deleting the workspace while any lacks one is forbidden.
+Sibling directories belong to other plans; leave them alone.
 
 Use superpowers:finishing-a-development-branch.
 
@@ -509,6 +519,8 @@ Use superpowers:finishing-a-development-branch.
 | "Reviews slow the loop down" | The loop without reviews is just unverified churn. Reviews are the loop's brakes and steering. |
 | "Ledger bookkeeping is overhead" | The ledger is what survives compaction. Controllers without one have re-dispatched entire completed task sequences. |
 | "The implementer spawned its own reviewer — free extra assurance" | It's a duplicate seat reviewing the same diff; the task review is the gate. A worker-spawned reviewer is a defect to flag, not rigor. |
+| "The deferred minors are in the ledger — good enough" | The ledger dies with the workspace. Every deferred finding gets an issue or a register entry before deletion. |
+| "The reviewer can trust the numbers in the report" | Numbers without command and output are prose. Risk diffs get re-run; everything else needs the artifacts. |
 
 ## Example Workflow
 

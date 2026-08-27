@@ -90,6 +90,8 @@ Subagent (general-purpose):
     - Type safety where applicable?
     - DRY without premature abstraction?
     - Edge cases handled?
+    - Code smells: duplication, dead code, needless complexity, swallowed
+      errors?
 
     **Architecture:**
     - Sound design decisions?
@@ -144,6 +146,12 @@ Subagent (general-purpose):
 
     ### Recommendations
     [Improvements for code quality, architecture, or process]
+
+    ### Deferred Debt
+
+    For every Minor that is real debt (not polish): a one-liner and a
+    disposition recommendation — fix now, follow-up issue, or debt
+    register. "None" if every Minor is polish.
 
     ### Assessment
 

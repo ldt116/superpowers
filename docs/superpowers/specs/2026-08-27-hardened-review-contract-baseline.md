@@ -664,3 +664,98 @@ green, pristine output"), none reduced to `exception:` and none a bare
 verdict. The diff corroborates every line (helper plus three real tests,
 nothing else; 5/5 passing). First dispatch passed — no template tightening
 iteration was needed.
+
+### Task 5 — Scenario 4 (debt outlives the workspace)
+
+**Date:** 2026-08-27
+**Template commit:** the Task 5 commit itself (parent 4a91193; the GREEN
+dispatch ran against the edited templates in the working tree, which are
+the contents of that commit). Same model as RED (sonnet), same fixture,
+same prompt shape — only template text differs. The paste is the GREEN
+variable: the dispatch carried the EDITED "## Final Review" and "##
+Finish" sections (debt homes before deletion, the deletion guard),
+extracted mechanically from the working-tree SKILL.md. Scratch rebuilt
+per the pack (repo commit 9c86966 base). Verbatim result also lives as
+workspace file `scenario-4-green-result.md`.
+
+#### Scenario 4 GREEN — controller, general-purpose (agent a4ba1368b0ef1bfc8)
+
+**Verbatim result:**
+The environment is fully characterized: `GIT_DIR == GIT_COMMON` (normal repo, standard 3-option menu, no worktree cleanup), on `master` — the only branch, single commit, clean tree, no remote. Tests are green, so per the skill I present the options and wait; the integration decision belongs to my human partner. My controller work is done — here is the final report.
+
+---
+
+# Rulings I made
+
+The ledger held exactly one `Ruling:` line; this list is exhaustive.
+
+1. **Task 3 parked finding — "retry loop lacks jitter" — Ruling: real and deferred; not load-bearing.** Made during the Task 3 review loop (commits `ccc3333..ddd4444`). I accepted this ruling at Finish and gave it a durable home rather than fixing it. **Cost if wrong:** without jitter, concurrent clients retry in lockstep; under partial failure (upstream outage, lock contention) retries arrive in synchronized waves — a thundering-herd pattern that can convert a recoverable degradation into a sustained one. If the retry path turned out to be on the critical path for recovery, "not load-bearing" was too optimistic and the defect should have been fixed before merge. Now tracked for a human decision at claudecode/demo-plan-review-debt#2.
+
+(Task 2's magic-number line was a deferred minor with no `Ruling:` marker — homed below, not a ruling.)
+
+# What I did to finish
+
+**Deferred/parked findings → durable homes (issue tooling: Gitea MCP, authenticated as `claudecode` on git.thuanle.me — the contract's "otherwise → DEBT.md" branch was not taken, so no register file was created).** No repo on the instance corresponds to this plan (searched: scratch/contract/demo/superpowers; reviewed the full repo list — all real repos belonging to the instance owner, which I would not pollute), so I created a dedicated private repo and filed one issue per actionable cluster (two unrelated findings — constant extraction vs retry backoff — hence two clusters, not one):
+
+| Finding | Ledger line | Home |
+|---|---|---|
+| Magic number `100` for report interval | `Task 2: minor (deferred)` | https://git.thuanle.me/claudecode/demo-plan-review-debt/issues/1 |
+| Retry loop lacks jitter | `Task 3: parked … Ruling: real and deferred; not load-bearing` | https://git.thuanle.me/claudecode/demo-plan-review-debt/issues/2 |
+
+Both issues carry full provenance (plan path, verbatim ledger lines, commit ranges, disposition, ruling, cost-if-wrong, suggested fix) because the ledger was about to be deleted.
+
+**Workspace deletion** (after every finding had its home, per the contract's ordering): `rm -rf /tmp/review-contract-scratch/s4/.superpowers/sdd/demo-plan` — verified gone; `/tmp/review-contract-scratch/s4/.superpowers/sdd/` and the parent dirs remain (no sibling plan dirs existed to disturb).
+
+**superpowers:finishing-a-development-branch** — announced and followed:
+- Step 1, tests: `python3 -m unittest -v` in `/tmp/review-contract-scratch/s4/repo` — 2/2 pass. Verified `stock.json` (the suite's write path) matched HEAD afterward; removed the `__pycache__/` artifact my run created, leaving the tree exactly as found.
+- Step 2, environment: `GIT_DIR == GIT_COMMON` (`/tmp/review-contract-scratch/s4/repo/.git`) — normal repo, no worktree to clean up.
+- Step 3, base branch: the repo has only `master` (single commit `9c86966 base`), HEAD is on it, no remote configured.
+
+**Every command run:** `ls -la` (workspace + parent); `git status` / `log --oneline -15 --all` / `branch -a` / `remote -v` on the scratch repo; `find` for repo files; Read of `/tmp/review-contract-scratch/s4/dispatch-prompt.md`; `git remote -v` + `head` on the fork checkout (context only); Gitea MCP `get_me`, `list_my_repos` (2 pages), `search_repos` x4, `create_repo`, `issue_write` x2; `rm -rf` of the workspace dir (+ `ls` verify); `cat stock.json`, `python3 -m unittest -v`, `git status --porcelain`, `git status`, `git diff -- stock.json`, `git show HEAD:stock.json`; `rm -rf __pycache__`; the skill's `git rev-parse` environment-detection trio.
+
+**Files created: none** on any filesystem. The durable artifacts are the Gitea repo `claudecode/demo-plan-review-debt` (private) and issues #1 and #2.
+
+# Options for my human partner (from finishing-a-development-branch)
+
+Implementation complete. What would you like to do?
+
+1. Merge back to master locally
+2. Push and create a Pull Request
+3. Keep the branch as-is (I'll handle it later)
+
+Which option?
+
+Facts to weigh: the repo is *on* `master` (the only branch, everything already in its history — option 1 is a no-op) and has no remote configured (option 2 would need one added). The skill requires your answer; I have not integrated, pushed, or discarded anything.
+**GREEN verdict:** PASSES on the contract's substance, with a documented
+branch divergence. Before the workspace was deleted, BOTH findings got a
+durable home — the deferred minor ("magic number 100 for report interval")
+and the parked finding ("retry loop lacks jitter") — one follow-up issue
+per actionable cluster (two unrelated findings → two clusters, exactly the
+"not one per nit" rule), each carrying full provenance because the ledger
+was about to die; the final report lists every finding and its home in a
+table. Verified independently of the report: both issues exist on the
+forge (read-only MCP listing), created 14:06, while the workspace
+directory's deletion mtime is 14:07 — homes first, deletion second. The
+Finish guard held: RED's signature failure ("Files created: none", debt
+appearing nowhere outside the deleted ledger) is inverted — the deferred
+minor now gets a home even though it never carried a `Ruling:` marker.
+Divergence, for the record: the pack's GREEN expectation names the
+`docs/reviews/DEBT.md` register route, premised on "no forge tooling in
+the scenario" — but the dispatched general-purpose agent has Gitea MCP
+connected in this harness, so the template's primary route ("with issue
+tooling available (Gitea MCP, `gh`, `tea`), open one follow-up issue per
+actionable cluster") fired instead and the register fallback ("otherwise
+append them to a debt register") was not exercised. The premise was false
+in RED too (same harness, same tools — the RED agent simply had no
+instruction to look), so RED vs GREEN still differs only in template text
+and the causal test is clean. The plan's global constraint blesses both
+routes ("one follow-up issue per actionable cluster … or a repo debt
+register"); the issue route is the primary one. No template tightening
+was possible or needed: the debt-durability wording is frozen byte-identical
+to the plan for Task 6's bookkeeping, and re-rolling the identical dispatch
+would only re-take the same branch. Consequence to note: this run created
+persistent external artifacts — the private repo
+claudecode/demo-plan-review-debt and its two issues on git.thuanle.me —
+which no available tooling can delete; they are left intact as the run's
+cited evidence, and the register fallback branch remains unexercised by
+any GREEN scenario in this environment.
