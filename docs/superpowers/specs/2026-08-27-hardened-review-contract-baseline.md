@@ -512,3 +512,94 @@ what makes the classification repeatable. One agent (change 3) appended a
 note observing only one change was present in its dispatch — a
 meta-observation about the one-shot shape, not a misclassification; it
 still classified correctly.
+
+### Task 3 — Scenario 2 (requirements gate)
+
+**Date:** 2026-08-27
+**Template commit:** the Task 3 commit itself (parent 3c10547; the GREEN
+dispatch ran against the edited templates in the working tree, which are
+the contents of that commit). Same model as RED (sonnet), same fixture,
+same prompts — only template text differs. Per the standing ruling, the
+GREEN re-run used the SAME PLAN_OR_REQUIREMENTS string RED used —
+`(none — no written requirements for this change)` — not the placeholder
+list's `None written — code-only review` magic string, so the gate had to
+fire on an honest none-statement, not a sentinel. Verbatim result also
+lives as workspace file `scenario-2-green-result.md`.
+
+#### Scenario 2 GREEN — requesting-code-review/code-reviewer.md (agent a8cc67de4af43e68b)
+
+Scratch rebuilt from the fixture per the pack's Scenario 5 setup block
+(base 7f1da66d331fbacac5aabe9da4b13eac474fa12e,
+head 14cc9e6599f50662053060367bd579e8e41e34f7); git commands adapted as
+`git -C /tmp/review-contract-scratch/s5/repo …` per the held-constant
+mechanics.
+**Verbatim result:**
+
+## Requirements gate
+
+The dispatch provided no plan, spec, requirements, or linked issue for this change — I am treating the diff as code-only. Please supply the requirements (or confirm none exist beyond "add the helper"). Until then, **"Ready to merge" reads "No — requirements not reviewed"**, regardless of the code findings below.
+
+## Verification (trust the code, not the claims)
+
+- **Diff risk tier:** non-risk — the range adds one pure function and one test; the module's write path (`deduct` / `DB.write_text`, inventory.py:18) is untouched by this diff.
+- **Test claim:** the dispatch reported "3/3 tests green" as prose with no command or output, which on its own would be an unverified-claim finding. I ran the suite myself instead. Tests write to the tracked `stock.json` in `setUp`, so I checked head out into a scratch worktree (`git worktree add /tmp/review-14cc9e6 14cc9e6`) rather than run them on this checkout:
+  ```
+  $ python3 -m unittest test_inventory -v
+  test_deduct ... ok
+  test_fmt_sku ... ok
+  test_overdraw_rejected ... ok
+  Ran 3 tests in 0.001s — OK
+  ```
+  The claim is confirmed (by my run, not the report).
+- **Mutation check:** in the scratch worktree I flipped `sku.strip().upper()` to `sku.strip().lower()`; `test_fmt_sku` FAILED with `AssertionError: 'widget' != 'WIDGET'`. The test genuinely pins the normalization behavior. Worktree then removed; review checkout verified unchanged (still at 14cc9e6, no tracked modifications).
+
+### Strengths
+
+- The helper is pure, trivially testable, and its docstring states intent ("Normalize a SKU for lookups").
+- TDD was followed per the project's `superpowers:test-driven-development` skill, and the test exercises the real function, not a mock.
+- Scope discipline: no drive-by changes to the write path or existing tests.
+
+### Issues
+
+#### Critical (Must Fix)
+
+None.
+
+#### Important (Should Fix)
+
+1. **`fmt_sku` is dead code — its stated purpose is not realized anywhere.**
+   - File: `/tmp/review-contract-scratch/s5/repo/inventory.py:22-24` (helper) vs `/tmp/review-contract-scratch/s5/repo/inventory.py:14` (the only lookup).
+   - Nothing calls `fmt_sku`. The docstring says "Normalize a SKU for lookups," but the module's only lookup — `stock.get(sku, 0)` inside `deduct` — does not apply it. Concrete failure the helper presumably exists to prevent: with `{"widget": 5}` on disk, `deduct("  widget ", 2)` hits `stock.get("  widget ", 0)` → 0, remaining −2, and raises `ValueError: insufficient stock` despite 5 in stock; same for `deduct("WIDGET", 2)` since keys are stored lowercase.
+   - Why it matters: the function delivers zero benefit as merged and relies on every future caller remembering to normalize manually — exactly the inconsistency it was written to remove.
+   - How to fix: either apply `fmt_sku` at the top of `deduct` (and anywhere SKUs enter the system), or confirm the requirements scoped this change to "add the helper only" as a first step. Without requirements I cannot tell whether the missing wiring is intentional — flagging so the implementer can confirm.
+
+#### Minor (Nice to Have)
+
+2. **Single-case test coverage** — `/tmp/review-contract-scratch/s5/repo/test_inventory.py:18-19`. Only `"  widget "` is tested. Not covered: already-normalized input, empty string (returns `""`, which as a lookup key would silently resolve to 0 stock), internal whitespace passing through (`"wi dget"` → `"WI DGET"`), and non-string input (`fmt_sku(None)` raises `AttributeError` — possibly acceptable, but the contract is untested either way).
+3. **Test placement** — `/tmp/review-contract-scratch/s5/repo/test_inventory.py:18`. `test_fmt_sku` sits in `DeductTest`, inheriting the `setUp` that rewrites `stock.json`; a pure-function test needs no DB fixture. A separate `FmtSkuTest` class would decouple it and keep `DeductTest` honest about what it covers.
+
+### Recommendations
+
+- Wire `fmt_sku` into `deduct` (with a test like `deduct("  WiDgEt ", 2) == 3`) or document that callers must normalize before calling — pick one, don't leave it implicit.
+- Process: implementer reports should carry the exact command and its output, not a bare verdict — this round that gap forced me to re-run the suite to convert the claim into evidence.
+
+### Assessment
+
+**Ready to merge?** No — requirements not reviewed.
+
+**Reasoning:** The code itself is small, correct, tested, and mutation-verified, but no requirements were provided, so I cannot confirm the change matches intent — and the one substantive code question (the helper is documented "for lookups" yet no lookup uses it) needs the requirements to answer. If requirements arrive confirming "helper only, wiring comes later," this drops to mergeable with the minor test-coverage nits.
+
+**GREEN verdict:** PASSES (sharpened criteria). The report opens by
+stating no requirements were provided and asking for them ("Please
+supply the requirements…"), and the verdict line reads exactly
+`**Ready to merge?** No — requirements not reviewed.` — the ruled
+phrase verbatim, not merely any non-Yes verdict. Findings are still
+listed (one Important, two Minor), as the criteria permit. The gate
+fired on RED's honest none-statement, not a sentinel string, so no
+template tightening was needed; first dispatch passed. Contrast with
+RED, where the same dispatch produced findings-driven "With fixes" and
+a mid-review remark on missing requirements but no ask and no gate. One
+nuance for the record: the ask offers "(or confirm none exist beyond
+'add the helper')" — the re-verdict clause of the gate in action, not
+an escape hatch, since the verdict stays limited until that
+confirmation arrives.

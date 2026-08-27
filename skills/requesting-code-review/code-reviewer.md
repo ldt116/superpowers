@@ -20,6 +20,14 @@ Subagent (general-purpose):
 
     [PLAN_OR_REQUIREMENTS]
 
+    **Requirements gate:** [PLAN_OR_REQUIREMENTS] is your ground truth —
+    read it before judging the diff. If the dispatch provided no plan,
+    spec, requirements, or linked issue, say so at the top of your report
+    and ask for them. Until they arrive, your review is code-only:
+    findings are still findings, but "Ready to merge" reads "No —
+    requirements not reviewed". Never approve a diff whose requirements
+    you have not read. With requirements in hand, re-verdict.
+
     ## Git Range to Review
 
     **Base:** [BASE_SHA]
@@ -162,7 +170,7 @@ Subagent (general-purpose):
 
 **Placeholders:**
 - `[DESCRIPTION]` — brief summary of what was built
-- `[PLAN_OR_REQUIREMENTS]` — what it should do (plan file path, task text, or requirements)
+- `[PLAN_OR_REQUIREMENTS]` — REQUIRED: what it should do (plan file path, task text, requirements) or the explicit string `None written — code-only review`
 - `[BASE_SHA]` — starting commit
 - `[HEAD_SHA]` — ending commit
 

@@ -35,7 +35,7 @@ Dispatch a `general-purpose` subagent, filling the template at [code-reviewer.md
 
 **Placeholders:**
 - `{DESCRIPTION}` - Brief summary of what you built
-- `{PLAN_OR_REQUIREMENTS}` - What it should do
+- `{PLAN_OR_REQUIREMENTS}` - REQUIRED: what it should do (plan file path, task text, or requirements). Never dispatch with it empty — if no written requirements exist, pass `None written — code-only review` so the reviewer applies its requirements gate honestly.
 - `{BASE_SHA}` - Starting commit
 - `{HEAD_SHA}` - Ending commit
 
