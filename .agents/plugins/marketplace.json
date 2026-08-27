@@ -1,7 +1,7 @@
 {
-  "name": "superpowers-dev",
+  "name": "superpowers-ldt116",
   "interface": {
-    "displayName": "Superpowers Dev"
+    "displayName": "Superpowers ldt116"
   },
   "plugins": [
     {
