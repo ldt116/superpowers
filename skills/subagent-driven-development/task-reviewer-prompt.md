@@ -162,6 +162,13 @@ Subagent (general-purpose):
       significantly grow existing files? (Don't flag pre-existing file
       sizes — focus on what this change contributed.)
 
+    **Self-review line:** the implementer's report must end with a
+    Self-review line — one line per category (Completeness / Quality /
+    Discipline / Testing), each ✅ with a one-line evidence note or an
+    explicit exception. A missing line is an Important finding (contract
+    unmet). A line the diff contradicts — "✅ edge cases handled" over a
+    diff with an unhandled error path — is an Important finding too.
+
     Your report should point at evidence: file:line references for every
     finding and for any check you would otherwise answer with a bare
     "yes." A tight report that cites lines gives the controller everything

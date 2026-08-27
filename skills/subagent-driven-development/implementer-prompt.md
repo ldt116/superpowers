@@ -114,6 +114,13 @@ Subagent (general-purpose):
     - Are tests comprehensive?
     - Is the test output pristine (no stray warnings or noise)?
 
+    End your report with a Self-review line — one line per category
+    (Completeness / Quality / Discipline / Testing), each either
+    `✅ <what you checked and where>` or `exception: <reason>`. "Looks
+    fine" is not evidence: name what you ran, read, or compared. If
+    self-review finds an issue you then fixed, the line records the fix
+    and where to see it.
+
     If you find issues during self-review, fix them now before reporting.
 
     ## After Review Findings
@@ -137,7 +144,8 @@ Subagent (general-purpose):
       - RED: command run, relevant failing output before implementation, and why the failure was expected
       - GREEN: command run and relevant passing output after implementation
     - Files changed
-    - Self-review findings (if any)
+    - Self-review: one line per category (Completeness / Quality /
+      Discipline / Testing), each ✅ evidence or `exception: <reason>`
     - Any issues or concerns
 
     Then report back with ONLY (under 15 lines — the detail lives in the

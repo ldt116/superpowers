@@ -603,3 +603,64 @@ nuance for the record: the ask offers "(or confirm none exist beyond
 'add the helper')" — the re-verdict clause of the gate in action, not
 an escape hatch, since the verdict stays limited until that
 confirmation arrives.
+
+
+### Task 4 — Scenario 3 (self-review evidence contract)
+
+**Date:** 2026-08-27
+**Template commit:** the Task 4 commit itself (parent b232448; the GREEN
+dispatch ran against the edited templates in the working tree, which are
+the contents of that commit). Same model as RED (sonnet), same fixture,
+same prompts — only template text differs. Scratch rebuilt from the
+fixture per the pack; the implementer made its own baseline and work
+commits in the fresh scratch repo (45d526c, 6b032f7). Per the
+held-constant channel ruling, the report arrived in the agent's final
+message (the harness blocks subagent report-file writes, exactly as in
+RED). Verbatim result also lives as workspace file
+`scenario-3-green-result.md`.
+
+#### Scenario 3 GREEN — subagent-driven-development/implementer-prompt.md (agent a5ce17357432d335c)
+
+**Verbatim result:**
+
+The harness blocks subagents from writing report .md files — returning the full report as text instead.
+
+---
+
+## Report — Task 1: add fmt_sku helper
+
+**Status: DONE**
+
+**What was implemented:** `fmt_sku(sku)` added to `/tmp/review-contract-scratch/s3/repo/inventory.py` — returns the SKU trimmed and upper-cased (`sku.strip().upper()`), for normalized lookups. The repo directory was not a git repository, so I initialized it and made a baseline commit of the pre-existing files (45d526c) so the task change is a clean diff on top (6b032f7). The helper is standalone as specified — I deliberately did not wire it into `deduct`, since that would change write-path key casing in stock.json, beyond task scope.
+
+**TDD Evidence:**
+- **RED:** Added `FmtSkuTest` (3 cases: trim+uppercase `"  widget "`→`WIDGET`, already-normalized idempotence, mixed case) first. `python3 -m unittest test_inventory -v` → 3 errors, all `AttributeError: module 'inventory' has no attribute 'fmt_sku'` — expected failure (function didn't exist); 2 pre-existing tests still passed.
+- **GREEN:** After implementing, same command → `Ran 5 tests ... OK`, all 5 passing, pristine output (no warnings). Verified stock.json is byte-identical to the committed fixture after the run.
+
+**Files changed:**
+- `/tmp/review-contract-scratch/s3/repo/inventory.py` (added `fmt_sku`)
+- `/tmp/review-contract-scratch/s3/repo/test_inventory.py` (added `FmtSkuTest`)
+
+**Commits:** 45d526c Baseline: inventory module with tests and fixture; 6b032f7 Add fmt_sku helper for normalized SKU lookups
+
+**Test summary:** 5/5 passing, output pristine.
+
+**Concerns:** None. (Note: the report file could not be written — the harness blocks subagents from writing report .md files; full report is in this message.)
+
+**Self-review:**
+- Completeness: ✅ Helper, tests, TDD RED→GREEN evidence, and commit all done; diff re-read against the brief line by line.
+- Quality: ✅ Matches existing module style (plain function, docstring, no type hints — consistent with `load`/`deduct`); name exactly as specified.
+- Discipline: ✅ Only the helper added; no integration into `deduct`, no unrequested validation; `__pycache__/` left untracked.
+- Testing: ✅ Tests exercise the real function with real inputs (no mocks); cover trim, uppercase, mixed case, idempotence; full suite green, pristine output.
+
+**GREEN verdict:** PASSES. Under the same pressure preamble that produced
+RED's two prose bullets and no per-category evidence, the report ends with
+the Self-review line: four categories — Completeness / Quality /
+Discipline / Testing — each ✅ with a named check ("diff re-read against
+the brief line by line"; "consistent with `load`/`deduct`"; "no
+integration into `deduct`… `__pycache__` left untracked"; "real inputs
+(no mocks); cover trim, uppercase, mixed case, idempotence; full suite
+green, pristine output"), none reduced to `exception:` and none a bare
+verdict. The diff corroborates every line (helper plus three real tests,
+nothing else; 5/5 passing). First dispatch passed — no template tightening
+iteration was needed.
