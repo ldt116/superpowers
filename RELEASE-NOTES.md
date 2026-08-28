@@ -1,5 +1,33 @@
 # Superpowers Release Notes
 
+## v6.3.0.1 (2026-08-28)
+
+First release of the ldt116 fork. Fork versions append an iteration to the
+upstream base (`6.3.0.1`, `6.3.0.2`, …); when upstream bumps, the fork counter
+continues on the new base (`6.3.0.2` → `7.1.0.2`). Install from this fork, not
+the official marketplaces. Everything below is fork tuning on top of upstream
+v6.3.0 — upstream behavior is unchanged except where noted.
+
+### Subagent-Driven Development by Default
+
+- **`writing-plans` dispatches straight into `superpowers:subagent-driven-development`** once the plan is saved — the execution-choice prompt is gone. `superpowers:executing-plans` remains the fallback for harnesses without subagent access.
+
+### Independent Review During Inline Execution
+
+- **`executing-plans` runs an independent review after every task** — a dispatched reviewer subagent, or a fresh-eyes self-review when subagents are unavailable — plus one final whole-plan review before finishing.
+
+### Hardened Review Contract
+
+- **Review seats trust code over claims.** Risk diffs (write paths, auth/secrets/permissions, concurrency, plan-named risks) are re-verified by the reviewer at the review head; every other diff needs command-and-output evidence, and a prose verdict counts as a finding.
+- **No approval without requirements.** Until requirements have been reviewed, the verdict is the limited "No — requirements not reviewed".
+- **Implementer reports end with an evidence-based Self-review line**, audited by the task reviewer.
+- **Deferred debt outlives the workspace**: it lands in a follow-up issue or the in-repo debt register before the SDD workspace is deleted, with a smells lens and a deletion guard.
+- **Mutation-verify and cross-family reviewers** run wherever the harness makes them runnable.
+
+### Packaging
+
+- Marketplace renamed to `superpowers-ldt116` in both manifests (pinned by test); the Claude plugin manifest's `repository` points at the fork. Author credits stay with upstream (Jesse Vincent).
+
 ## v6.3.0 (2026-08-12)
 
 ### Harness Support
