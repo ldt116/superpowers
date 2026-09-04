@@ -133,11 +133,22 @@ controllers that lost their place have re-dispatched entire completed task
 sequences — the single most expensive failure observed. Track progress in
 a ledger file, not only in todos.
 
+- If the plan lives on the tracker (writing-plans puts gate artifacts on the
+  issue that tracks the work), fetch it — the issue's body or its plan
+  comment — into
+  `<repo-root>/.superpowers/plans/<plan-slug>.md` — git-ignored scratch: drop
+  a self-ignoring `.gitignore` beside it on first use — and treat that file
+  as PLAN_FILE from here on. The issue stays the durable record; the scratch
+  copy is working input only.
 - Each plan owns a workspace: at skill start, run this skill's
   `scripts/sdd-workspace PLAN_FILE` — it prints the plan's git-ignored
   directory (`<repo-root>/.superpowers/sdd/<plan-basename>/`), home to
   every artifact for THIS plan: ledger, briefs, reports, review packages.
   Another plan's directory is never yours to read or write.
+- Workspace artifacts are machine-internal: briefs, reports, packages, and
+  ledger exist for this run's subagents, and nobody reads them after the
+  run. Never post them to the tracker. A plan's issue (when there is one)
+  is the human record — plan in, final summary out, nothing between.
 - Check for this plan's ledger at `<workspace>/progress.md`. If its first
   line names your plan file, tasks with a `Task <N>: complete` line are DONE
   — do not re-dispatch them; resume at the first task without one. A task
@@ -146,7 +157,8 @@ a ledger file, not only in todos.
   ledger at the old flat path `.superpowers/sdd/progress.md` — is another
   plan's progress: leave it in place and start your own, fresh.
 - Create the ledger with its identity as the first line:
-  `# SDD ledger — plan: <plan file path>`.
+  `# SDD ledger — plan: <plan file path>` — append `— issue: <ref>` when the
+  plan lives on a tracker issue.
 - The ledger is your recovery map: the commits it names exist in git even
   when your context no longer remembers creating them. After compaction,
   trust the ledger and `git log` over your own recollection.
@@ -154,7 +166,8 @@ a ledger file, not only in todos.
   that happens, recover from `git log`.
 
 Read the plan once, note its context and Global Constraints, and create a
-todo per task. If the plan names a Spec, read that too: the spec is the
+todo per task. If the plan names a Spec, read that too — fetching its body
+from the tracker if the spec is an issue: the spec is the
 authority the plan argues from, and conflicts inside the plan resolve
 against it. A plan with no reachable spec gets a ledger note saying so —
 rulings made without one are provisional.
@@ -497,7 +510,12 @@ When the final whole-branch review is clean, its fixes are merged, and
 every deferred or parked finding has its recorded home (issue opened or
 register entry appended — listed in your final report), delete this plan's
 workspace (`rm -rf <workspace>`) — the git history and the debt record are
-the record now. A deferred finding with no home is not deferred, it is
+the record now. If the plan lives on a tracker issue, its close-out is part
+of this: post the final summary (verdict, commits, the Rulings list, the
+deferred-findings homes) as a comment on the issue that carries the plan,
+and close that issue when this plan completes its work — an issue with open
+work beyond this plan stays open — before the workspace goes. A deferred
+finding with no home is not deferred, it is
 discarded; deleting the workspace while any lacks one is forbidden.
 Sibling directories belong to other plans; leave them alone.
 
@@ -525,8 +543,9 @@ Use superpowers:finishing-a-development-branch.
 You: I'm using Subagent-Driven Development to execute this plan.
 
 [Setup: worktree verified]
-[Read plan file once: docs/superpowers/plans/feature-plan.md]
-[Resolve workspace: scripts/sdd-workspace docs/superpowers/plans/feature-plan.md — no ledger inside, fresh start]
+[Plan lives on issue #42 (the work's issue): fetch body + comments → .superpowers/plans/feature-plan.md]
+[Read plan file once: .superpowers/plans/feature-plan.md]
+[Resolve workspace: scripts/sdd-workspace .superpowers/plans/feature-plan.md — no ledger inside, fresh start]
 [Create todos for all tasks]
 
 Task 1: Hook installation script
@@ -581,7 +600,8 @@ Re-reviewer: Missing progress reporting — ADDRESSED (src/recovery.js:41).
 [Run review-package PLAN_FILE MERGE_BASE HEAD; dispatch final code-reviewer, most capable model]
 Final reviewer: All requirements met. Deferred minors triaged: none block merge.
 
-[Delete this plan's workspace — the record now lives in git]
+[Post final summary to issue #42; close it — its work is done]
+[Delete this plan's workspace — the record now lives in git and the issue]
 
 Done! Using superpowers:finishing-a-development-branch.
 ```

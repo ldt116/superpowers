@@ -15,7 +15,18 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Context:** If working in an isolated worktree, it should have been created via the `superpowers:using-git-worktrees` skill at execution time.
 
-**Save plans to:** `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
+**Where plans live:** a plan is a gate artifact — your human partner reads and
+approves it before execution, so it belongs on the repository's issue tracker
+(GitHub, Gitea, …), where the review and its history survive the workspace.
+
+- **The work already has an issue:** post the plan as a comment on that
+  issue — one work item, one issue; a second issue for the same work is
+  tracker spam
+- **Tracker, but no issue for this work yet:** create one — title
+  `Plan: <feature-name>`, body the full plan markdown — using your harness's
+  issue-creation tool
+- **No tracker (local repo, no tool):** save to
+  `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md` instead
 - (User preferences for plan location override this default)
 
 ## Scope Check
@@ -154,7 +165,7 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 
 After saving the plan, proceed directly into execution. Subagent-driven is the default — never offer it as a choice or ask which approach your human partner prefers:
 
-**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Executing with subagent-driven development."**
+**"Plan complete and saved to <tracker issue / file path>. Executing with subagent-driven development."**
 
 - **REQUIRED SUB-SKILL:** Use superpowers:subagent-driven-development
 - Fresh subagent per task + two-stage review
