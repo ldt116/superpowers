@@ -1,5 +1,17 @@
 # Superpowers Release Notes
 
+## v6.3.0.2 (2026-09-04)
+
+Gate artifacts live on the issue that tracks the work. Fork iteration on the
+same upstream base; install/update from this fork's marketplace.
+
+### Gate Artifacts on the Issue Tracker
+
+- **Plans and specs go to the repo's tracker** (`writing-plans`, `brainstorming`) — posted as a comment on the issue that already tracks the work; a new `Plan:`/`Spec:` issue only when none exists. One work item keeps one issue — never a second for the same work. The `docs/superpowers/` file paths are the no-tracker fallback, and specs are no longer auto-committed to git.
+- **Workspace-internal artifacts are never tracked**: task briefs, implementer reports, review packages, and ledgers stay in git-ignored scratch — plan in, final summary out, nothing between.
+- **`subagent-driven-development` runs plans that live on an issue**: the issue body (or its plan comment) is materialized into git-ignored scratch (`.superpowers/plans/`) before `sdd-workspace`; on a clean final review the summary is posted to that issue and the issue closed — unless it tracks work beyond the plan.
+- `executing-plans` and `requesting-code-review` read plans issue-or-file.
+
 ## v6.3.0.1 (2026-08-28)
 
 First release of the ldt116 fork. Fork versions append an iteration to the
