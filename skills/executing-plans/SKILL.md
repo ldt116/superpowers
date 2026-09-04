@@ -17,7 +17,7 @@ Load plan, review critically, execute all tasks with an independent review after
 
 ### Step 1: Load and Review Plan
 1. Ensure an isolated workspace: use superpowers:using-git-worktrees to create one or verify the existing one
-2. Read plan file
+2. Read the plan — if it lives on a tracker issue, fetch its body first
 3. Review critically - identify any questions or concerns about the plan
 4. If concerns: Raise them with your human partner before starting
 5. If no concerns: Create todos for the plan items and proceed
