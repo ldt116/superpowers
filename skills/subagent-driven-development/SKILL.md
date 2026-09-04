@@ -133,8 +133,9 @@ controllers that lost their place have re-dispatched entire completed task
 sequences — the single most expensive failure observed. Track progress in
 a ledger file, not only in todos.
 
-- If the plan lives on a tracker issue (writing-plans puts gate artifacts
-  there), fetch its body into
+- If the plan lives on the tracker (writing-plans puts gate artifacts on the
+  issue that tracks the work), fetch it — the issue's body or its plan
+  comment — into
   `<repo-root>/.superpowers/plans/<plan-slug>.md` — git-ignored scratch: drop
   a self-ignoring `.gitignore` beside it on first use — and treat that file
   as PLAN_FILE from here on. The issue stays the durable record; the scratch
@@ -157,7 +158,7 @@ a ledger file, not only in todos.
   plan's progress: leave it in place and start your own, fresh.
 - Create the ledger with its identity as the first line:
   `# SDD ledger — plan: <plan file path>` — append `— issue: <ref>` when the
-  plan came from a tracker issue.
+  plan lives on a tracker issue.
 - The ledger is your recovery map: the commits it names exist in git even
   when your context no longer remembers creating them. After compaction,
   trust the ledger and `git log` over your own recollection.
@@ -509,10 +510,12 @@ When the final whole-branch review is clean, its fixes are merged, and
 every deferred or parked finding has its recorded home (issue opened or
 register entry appended — listed in your final report), delete this plan's
 workspace (`rm -rf <workspace>`) — the git history and the debt record are
-the record now. If the plan came from a tracker issue, its close-out is part
+the record now. If the plan lives on a tracker issue, its close-out is part
 of this: post the final summary (verdict, commits, the Rulings list, the
-deferred-findings homes) as a comment on that issue, then close it — before
-the workspace goes. A deferred finding with no home is not deferred, it is
+deferred-findings homes) as a comment on the issue that carries the plan,
+and close that issue when this plan completes its work — an issue with open
+work beyond this plan stays open — before the workspace goes. A deferred
+finding with no home is not deferred, it is
 discarded; deleting the workspace while any lacks one is forbidden.
 Sibling directories belong to other plans; leave them alone.
 
@@ -540,7 +543,7 @@ Use superpowers:finishing-a-development-branch.
 You: I'm using Subagent-Driven Development to execute this plan.
 
 [Setup: worktree verified]
-[Plan arrived as issue #42: fetch body → .superpowers/plans/feature-plan.md]
+[Plan lives on issue #42 (the work's issue): fetch body + comments → .superpowers/plans/feature-plan.md]
 [Read plan file once: .superpowers/plans/feature-plan.md]
 [Resolve workspace: scripts/sdd-workspace .superpowers/plans/feature-plan.md — no ledger inside, fresh start]
 [Create todos for all tasks]
@@ -597,7 +600,7 @@ Re-reviewer: Missing progress reporting — ADDRESSED (src/recovery.js:41).
 [Run review-package PLAN_FILE MERGE_BASE HEAD; dispatch final code-reviewer, most capable model]
 Final reviewer: All requirements met. Deferred minors triaged: none block merge.
 
-[Post final summary to plan issue #42; close it]
+[Post final summary to issue #42; close it — its work is done]
 [Delete this plan's workspace — the record now lives in git and the issue]
 
 Done! Using superpowers:finishing-a-development-branch.

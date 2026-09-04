@@ -19,7 +19,10 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 approves it before execution, so it belongs on the repository's issue tracker
 (GitHub, Gitea, …), where the review and its history survive the workspace.
 
-- **Repo has a tracker you can write to:** create an issue per plan — title
+- **The work already has an issue:** post the plan as a comment on that
+  issue — one work item, one issue; a second issue for the same work is
+  tracker spam
+- **Tracker, but no issue for this work yet:** create one — title
   `Plan: <feature-name>`, body the full plan markdown — using your harness's
   issue-creation tool
 - **No tracker (local repo, no tool):** save to
