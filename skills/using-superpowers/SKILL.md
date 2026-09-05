@@ -23,6 +23,16 @@ This is not negotiable. You cannot rationalize your way out of this.
 
 Then announce "Using [skill] to [purpose]" and follow the skill exactly. If it has a checklist, create a todo per item.
 
+## Keep the Main Chat Lean
+
+The main conversation is your coordination space. Tool payloads — file contents, command output, diffs — age it fast. Keep them out; the chat holds decisions, dispatches, rulings, and conclusions.
+
+- Don't know where something is? Grep for the location or dispatch a search subagent. Never browse file-by-file looking for it.
+- Know where it is? Read only the lines you need, not the file.
+- The answer requires digesting many files? One subagent reads them and returns the conclusion — you keep the summary, not the payloads.
+- A command will print a lot (test suite, build log, wide diff)? Redirect to a file and read the excerpt that matters, or have a subagent digest it.
+- No subagents in your harness? Targeted greps and ranged reads — still never bulk payloads into the chat.
+
 ## Skill Priority
 
 When multiple skills apply, process skills come first — they set the approach, then implementation skills (frontend-design, etc.) carry it out. Brainstorming and systematic-debugging are Superpowers' most common process skills, but the rule holds for any of them.
@@ -48,6 +58,7 @@ These thoughts mean STOP—you're rationalizing:
 | "I'll just do this one thing first" | Check BEFORE doing anything. |
 | "This feels productive" | Undisciplined action wastes time. Skills prevent this. |
 | "I know what that means" | Knowing the concept ≠ using the skill. Invoke it. |
+| "Let me just read the whole file" | Don't know where it is? Grep or dispatch a search. Know where it is? Read only those lines. |
 
 ## Platform Adaptation
 

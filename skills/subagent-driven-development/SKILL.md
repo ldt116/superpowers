@@ -250,6 +250,12 @@ judgment, its own tests, or its own review surface.
 Everything you paste into a dispatch prompt — and everything a subagent
 prints back — stays resident in your context for the rest of the session
 and is re-read on every later turn. Hand artifacts over as files.
+Tracker-bound bodies — an issue comment, a PR body, the final summary —
+are files too: compose once in the workspace, then post by path (a CLI
+`--body-file`, shell substitution, or a subagent that reads the file,
+posts, and returns the URL). In a real session, a controller composing a
+full issue comment and PR body inline through a string-only tracker tool
+paid a full copy of each, resident for the rest of the run.
 
 **Waiting on dispatched subagents:** never poll a wait interface with
 short timeouts, and never sit in one silent, open-ended wait either.
@@ -283,6 +289,10 @@ and fix-round diffs need it.
   (brief `…/task-N-brief.md` → report `…/task-N-report.md`) and put it in
   the dispatch prompt. The implementer writes the full report there and
   returns only status, commits, a one-line test summary, and concerns.
+- A hand-composed dispatch carries the template's return contract verbatim
+  — under 15 lines back, detail in the report file. In a real session,
+  hand-written dispatches that dropped it got full dumps back, and every
+  dump stayed resident in the controller's context for the rest of the run.
 - A dispatch prompt describes one task, not the session's history. Do not
   paste accumulated prior-task summaries ("state after Tasks 1-3") into
   later dispatches — a real session's dispatch hit 42k chars of which 99%
@@ -512,7 +522,8 @@ register entry appended — listed in your final report), delete this plan's
 workspace (`rm -rf <workspace>`) — the git history and the debt record are
 the record now. If the plan lives on a tracker issue, its close-out is part
 of this: post the final summary (verdict, commits, the Rulings list, the
-deferred-findings homes) as a comment on the issue that carries the plan,
+deferred-findings homes), composed in the workspace and posted by path,
+as a comment on the issue that carries the plan,
 and close that issue when this plan completes its work — an issue with open
 work beyond this plan stays open — before the workspace goes. A deferred
 finding with no home is not deferred, it is
