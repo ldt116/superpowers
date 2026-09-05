@@ -163,11 +163,26 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 
 ## Execution Handoff
 
-After saving the plan, proceed directly into execution. Subagent-driven is the default — never offer it as a choice or ask which approach your human partner prefers:
+After saving the plan, hand execution to a fresh session — never your own.
+You authored this plan: your context carries the brainstorm, the spec, and
+every draft of the plan text, and a session that keeps executing drags all
+of it through every dispatch and ruling ahead. Still never offer an
+execution choice or ask which approach your human partner prefers — the
+handoff itself is the default:
 
-**"Plan complete and saved to <tracker issue / file path>. Executing with subagent-driven development."**
+**"Plan complete and saved to <tracker issue / file path>. Dispatching a fresh implementation session."**
 
-- **REQUIRED SUB-SKILL:** Use superpowers:subagent-driven-development
-- Fresh subagent per task + two-stage review
-
-**Fallback when this harness has no subagent access:** Use superpowers:executing-plans and tell your human partner you're running inline.
+- Launch a brand-new session or agent (a new CLI session, Paseo
+  `create_agent`, whatever your harness offers) with a pointer prompt:
+  the issue ref or plan path, the worktree/branch to work in, and
+  **REQUIRED SUB-SKILL:** Use superpowers:subagent-driven-development.
+  Pointers only — the prompt carries no plan content; the implementing
+  session fetches the plan itself (SDD Setup covers materializing it
+  from the tracker).
+- **Fallback when fresh sessions aren't available:** dispatch ONE
+  implementation subagent (Agent/Task tool) that runs
+  superpowers:subagent-driven-development in its own clean context —
+  still not your session.
+- **Fallback when this harness has no subagent access:** Use
+  superpowers:executing-plans and tell your human partner you're running
+  inline.
