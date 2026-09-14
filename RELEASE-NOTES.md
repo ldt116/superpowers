@@ -1,5 +1,17 @@
 # Superpowers Release Notes
 
+## v6.4.0.2 (2026-09-14)
+
+All skill artifacts moved out of the repository into `/tmp/superpowers/<project-id>/`. Fork iteration on the same upstream base; install/update from this fork's marketplace.
+
+### Artifacts Live Outside the Repo
+
+- **Plans and specs are files again** (`writing-plans`, `brainstorming`): saved to `/tmp/superpowers/<id>/plans|specs/YYYY-MM-DD-<name>.md` — never inside the repo, never posted to a tracker. The issue-tracker posting from v6.3.0.2 is reverted.
+- **SDD scratch moved out of the working tree**: task briefs, implementer reports, review packages, and ledgers resolve to `/tmp/superpowers/<id>/sdd/<plan-basename>/` (`scripts/sdd-workspace`); the `.superpowers/` directory and its self-ignoring `.gitignore` are gone — scratch never dirties `git status`, never lands in a commit, and survives `git clean -fdx`. Workspaces are owner-only (700).
+- **Brainstorm-server sessions** live under `/tmp/superpowers/<id>/brainstorm/` and are kept on stop (mockups survive restarts); only the no-project `/tmp` fallback is deleted on stop.
+- **No final-summary posting or issue close-out**: the final report goes to the conversation; deferred findings keep their follow-up issue or debt-register entry.
+- `<project-id>` is the repo root's basename plus the first 6 hex chars of the root path's md5 (e.g. `superpowers-3f9c2e`), computed per checkout — linked worktrees scope separately. `/tmp` is machine-local and ephemeral (a reboot clears it); the durable record is git history plus the debt register.
+
 ## v6.3.0.2 (2026-09-04)
 
 Gate artifacts live on the issue that tracks the work. Fork iteration on the

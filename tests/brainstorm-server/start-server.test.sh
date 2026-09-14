@@ -12,6 +12,9 @@ failed=0
 
 cleanup() {
   rm -rf "$TEST_DIR"
+  local id
+  id="project-$(printf %s "$TEST_DIR/project" | md5sum | cut -c1-6)"
+  rm -rf "/tmp/superpowers/$id"
 }
 trap cleanup EXIT
 
@@ -74,7 +77,7 @@ else
        "expected exact --brainstorm-server-id=<safe id> argv line, got: $captured"
 fi
 
-server_id_file=$(find "$TEST_DIR/project/.superpowers/brainstorm" -name server-instance-id -print 2>/dev/null | head -1)
+server_id_file=$(find "/tmp/superpowers/project-$(printf %s "$TEST_DIR/project" | md5sum | cut -c1-6)/brainstorm" -name server-instance-id -print 2>/dev/null | head -1)
 server_id_value=""
 if [[ -n "$server_id_file" ]]; then
   server_id_value="$(tr -d '\r\n' < "$server_id_file")"
@@ -86,7 +89,7 @@ else
        "expected valid id in state, got '$server_id_value'"
 fi
 
-rm -rf "$TEST_DIR/project"/*
+rm -rf "/tmp/superpowers/project-$(printf %s "$TEST_DIR/project" | md5sum | cut -c1-6)"
 
 cat > "$TEST_DIR/fake-bin/node" <<'EOF'
 #!/usr/bin/env bash

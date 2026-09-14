@@ -142,6 +142,18 @@ cleanup_test_project() {
     if [ -d "$test_dir" ]; then
         rm -rf "$test_dir"
     fi
+    # Plans created by create_test_plan live under /tmp/superpowers/<id>/
+    rm -rf "/tmp/superpowers/$(test_project_id "$test_dir")"
+}
+
+# Project id used by the /tmp/superpowers/<id>/ scratch scheme
+# (basename + first 6 hex chars of the md5 of the physical path)
+# Usage: id=$(test_project_id "$project_dir")
+test_project_id() {
+    local resolved
+    resolved=$(cd "$1" 2>/dev/null && pwd -P) || resolved="$1"
+    printf '%s-%s\n' "$(basename "$resolved")" \
+        "$(printf %s "$resolved" | md5sum | cut -c1-6)"
 }
 
 # Create a simple plan file for testing
@@ -149,7 +161,7 @@ cleanup_test_project() {
 create_test_plan() {
     local project_dir="$1"
     local plan_name="${2:-test-plan}"
-    local plan_file="$project_dir/docs/superpowers/plans/$plan_name.md"
+    local plan_file="/tmp/superpowers/$(test_project_id "$project_dir")/plans/$plan_name.md"
 
     mkdir -p "$(dirname "$plan_file")"
 
@@ -205,4 +217,5 @@ export -f assert_count
 export -f assert_order
 export -f create_test_project
 export -f cleanup_test_project
+export -f test_project_id
 export -f create_test_plan

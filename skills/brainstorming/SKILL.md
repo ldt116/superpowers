@@ -97,9 +97,9 @@ your path and complete them in order.
 3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
 4. **Propose 2-3 approaches** — with trade-offs and your recommendation
 5. **Present design** — in sections scaled to their complexity, get user approval after each section
-6. **Write design doc** — post it to the issue that tracks this work (as a comment); create one (`Spec: <topic>`, body the design) only if no issue exists; save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` only if the repo has no tracker
+6. **Write design doc** — save to `/tmp/superpowers/<project>/specs/YYYY-MM-DD-<topic>-design.md` (project id scheme under Documentation below)
 7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
-8. **User reviews written spec** — ask user to review the spec (issue or file) before proceeding
+8. **User reviews written spec** — ask user to review the spec file before proceeding
 9. **Transition to implementation** — invoke writing-plans skill to create implementation plan
 
 ## Process Flow
@@ -203,14 +203,11 @@ is the whole process.
 
 **Documentation:**
 
-- Record the validated design (spec) where your human partner reviews it and
-  where it survives the workspace: on the repository's tracker (GitHub,
-  Gitea, …). Post it as a comment on the issue that tracks this work when
-  one exists; otherwise create one — title `Spec: <topic>`, body the full
-  design markdown — using your harness's issue tools. One work item keeps
-  one issue: never open a second issue for work that already has one. Only
-  if the repo has no tracker, write it to
-  `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+- Save the validated design (spec) to
+  `/tmp/superpowers/<project>/specs/YYYY-MM-DD-<topic>-design.md` — a file
+  only: never inside the repo, never posted to a tracker. `<project>` is
+  the repo root's basename plus the first 6 hex chars of the root path's
+  md5 (e.g. `superpowers-3f9c2e`).
   - (User preferences for spec location override this default)
 - Use elements-of-style:writing-clearly-and-concisely skill if available
 

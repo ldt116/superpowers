@@ -15,18 +15,10 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Context:** If working in an isolated worktree, it should have been created via the `superpowers:using-git-worktrees` skill at execution time.
 
-**Where plans live:** a plan is a gate artifact — your human partner reads and
-approves it before execution, so it belongs on the repository's issue tracker
-(GitHub, Gitea, …), where the review and its history survive the workspace.
-
-- **The work already has an issue:** post the plan as a comment on that
-  issue — one work item, one issue; a second issue for the same work is
-  tracker spam
-- **Tracker, but no issue for this work yet:** create one — title
-  `Plan: <feature-name>`, body the full plan markdown — using your harness's
-  issue-creation tool
-- **No tracker (local repo, no tool):** save to
-  `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md` instead
+**Save plans to:** `/tmp/superpowers/<project>/plans/YYYY-MM-DD-<feature-name>.md`
+— a file only: never inside the repo, never posted to a tracker. `<project>`
+is the repo root's basename plus the first 6 hex chars of the root path's
+md5 (e.g. `superpowers-3f9c2e`).
 - (User preferences for plan location override this default)
 
 ## Scope Check
@@ -170,15 +162,14 @@ of it through every dispatch and ruling ahead. Still never offer an
 execution choice or ask which approach your human partner prefers — the
 handoff itself is the default:
 
-**"Plan complete and saved to <tracker issue / file path>. Dispatching a fresh implementation session."**
+**"Plan complete and saved to <plan file path>. Dispatching a fresh implementation session."**
 
 - Launch a brand-new session or agent (a new CLI session, Paseo
   `create_agent`, whatever your harness offers) with a pointer prompt:
-  the issue ref or plan path, the worktree/branch to work in, and
+  the plan file path, the worktree/branch to work in, and
   **REQUIRED SUB-SKILL:** Use superpowers:subagent-driven-development.
   Pointers only — the prompt carries no plan content; the implementing
-  session fetches the plan itself (SDD Setup covers materializing it
-  from the tracker).
+  session reads the plan file itself.
 - **Fallback when fresh sessions aren't available:** dispatch ONE
   implementation subagent (Agent/Task tool) that runs
   superpowers:subagent-driven-development in its own clean context —
