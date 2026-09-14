@@ -109,14 +109,25 @@ function removeShellPath(p) {
   execFileSync('bash', ['-lc', 'rm -rf "$1"', 'bash', p], { stdio: 'ignore' });
 }
 
+function removeProjectScratch(projectDir) {
+  // Session files live under /tmp/superpowers/<project-id>/brainstorm/, outside
+  // the project dir — remove them by the same id start-server.sh computes.
+  execFileSync('bash', [
+    '-lc',
+    'id="$(basename "$1")-$(printf %s "$1" | md5sum | cut -c1-6)"; rm -rf "/tmp/superpowers/$id"',
+    'bash',
+    projectDir
+  ], { stdio: 'ignore' });
+}
+
 function newestSessionDir(projectDir) {
   const sessionDir = execFileSync('bash', [
     '-lc',
-    'find "$1/.superpowers/brainstorm" -mindepth 1 -maxdepth 1 -type d -print | sort | tail -1',
+    'id="$(basename "$1")-$(printf %s "$1" | md5sum | cut -c1-6)"; find "/tmp/superpowers/$id/brainstorm" -mindepth 1 -maxdepth 1 -type d -print | sort | tail -1',
     'bash',
     projectDir
   ], { encoding: 'utf8' }).trim();
-  assert(sessionDir, `expected at least one session dir under ${projectDir}/.superpowers/brainstorm`);
+  assert(sessionDir, `expected at least one session dir under /tmp/superpowers/<id>/brainstorm for ${projectDir}`);
   return sessionDir;
 }
 
@@ -187,6 +198,7 @@ async function runTests() {
         await killAndWait(startProcess);
       }
       removeShellPath(dir);
+      removeProjectScratch(dir);
     }
   });
 

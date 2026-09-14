@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Tests for the SDD workspace: scripts/sdd-workspace resolves a self-ignoring,
-# PER-PLAN working-tree directory for SDD artifacts, and the SDD scripts write
-# into their plan's directory.
+# Tests for the SDD workspace: scripts/sdd-workspace resolves a PER-PLAN
+# scratch directory under /tmp/superpowers/<project-id>/sdd/ — outside the
+# repository, owner-only — and the SDD scripts write into their plan's
+# directory.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -10,6 +11,7 @@ SDD_SCRIPTS="$REPO_ROOT/skills/subagent-driven-development/scripts"
 
 FAILURES=0
 TEST_ROOT=""
+CLEANUP_DIRS=()
 
 pass() { echo "  [PASS] $1"; }
 fail() {
@@ -21,6 +23,20 @@ cleanup() {
     if [[ -n "$TEST_ROOT" && -d "$TEST_ROOT" ]]; then
         rm -rf "$TEST_ROOT"
     fi
+    # Workspaces live in /tmp and would survive the test; remove what it made.
+    local d
+    for d in "${CLEANUP_DIRS[@]}"; do
+        rm -rf "$d"
+    done
+}
+
+project_id() {
+    # Mirrors the id scheme in sdd-workspace: path basename + first 6 hex
+    # chars of the path's md5.
+    local path="$1" resolved
+    resolved="$(cd "$path" && git rev-parse --show-toplevel)"
+    printf '%s-%s\n' "$(basename "$resolved")" \
+        "$(printf %s "$resolved" | md5sum | cut -c1-6)"
 }
 
 main() {
@@ -29,12 +45,13 @@ main() {
     TEST_ROOT="$(mktemp -d)"
     trap cleanup EXIT
 
-    # Resolve repo to its physical path so string comparisons match the
-    # helper's output (git rev-parse --show-toplevel resolves symlinks; on
-    # macOS mktemp lives under /var -> /private/var).
     git init -q -b main "$TEST_ROOT/repo"
     local repo
     repo="$(cd "$TEST_ROOT/repo" && git rev-parse --show-toplevel)"
+    local repo_id base
+    repo_id="$(project_id "$repo")"
+    base="/tmp/superpowers/$repo_id/sdd"
+    CLEANUP_DIRS+=("/tmp/superpowers/$repo_id")
 
     cat > "$repo/plan-a.md" <<'PLAN'
 # Plan A
@@ -75,11 +92,12 @@ PLAN
     dir_a="$(cd "$repo" && "$SDD_SCRIPTS/sdd-workspace" plan-a.md)"
     dir_b="$(cd "$repo" && "$SDD_SCRIPTS/sdd-workspace" plan-b.md)"
 
-    if [[ "$dir_a" == "$repo/.superpowers/sdd/plan-a" ]]; then
-        pass "prints <repo-root>/.superpowers/sdd/<plan-basename>"
+    if [[ "$dir_a" == "$base/plan-a" ]]; then
+        pass "prints /tmp/superpowers/<project-id>/sdd/<plan-basename>"
     else
-        fail "prints <repo-root>/.superpowers/sdd/<plan-basename>"
+        fail "prints /tmp/superpowers/<project-id>/sdd/<plan-basename>"
         echo "    got: $dir_a"
+        echo "    want: $base/plan-a"
     fi
 
     if [[ "$dir_a" != "$dir_b" && -d "$dir_a" && -d "$dir_b" ]]; then
@@ -90,18 +108,26 @@ PLAN
         echo "    b: $dir_b"
     fi
 
-    if [[ -f "$repo/.superpowers/sdd/.gitignore" && "$(cat "$repo/.superpowers/sdd/.gitignore")" == "*" ]]; then
-        pass "self-ignoring .gitignore created at .superpowers/sdd/ with '*'"
+    if [[ ! -e "$repo/.superpowers" ]]; then
+        pass "no .superpowers directory is created inside the repo"
     else
-        fail "self-ignoring .gitignore created at .superpowers/sdd/ with '*'"
+        fail "no .superpowers directory is created inside the repo"
+        echo "    found: $repo/.superpowers"
+    fi
+
+    if [[ "$(stat -c %a "$dir_a")" == "700" ]]; then
+        pass "workspace directory is owner-only (700)"
+    else
+        fail "workspace directory is owner-only (700)"
+        echo "    mode: $(stat -c %a "$dir_a")"
     fi
 
     printf 'x\n' > "$dir_a/artifact.md"
     local status
     status="$(cd "$repo" && git status --porcelain)"
-    # plan-a.md/plan-b.md are intentionally untracked fixture files; only the
-    # workspace must be invisible.
-    if [[ "$status" != *".superpowers"* ]]; then
+    # plan-a.md/plan-b.md are intentionally untracked fixture files; nothing
+    # from the workspace may appear.
+    if [[ "$status" != *"$repo_id"* && "$status" != *".superpowers"* ]]; then
         pass "workspace invisible to git status"
     else
         fail "workspace invisible to git status"
@@ -111,7 +137,7 @@ PLAN
     ( cd "$repo" && git add -A )
     local staged
     staged="$(cd "$repo" && git diff --cached --name-only)"
-    if [[ "$staged" != *".superpowers"* ]]; then
+    if [[ "$staged" != *"$repo_id"* && "$staged" != *".superpowers"* ]]; then
         pass "git add -A does not stage the workspace"
     else
         fail "git add -A does not stage the workspace"
@@ -122,7 +148,7 @@ PLAN
     local brief_out brief_path
     brief_out="$(cd "$repo" && "$SDD_SCRIPTS/task-brief" plan-a.md 1)"
     brief_path="$(printf '%s\n' "$brief_out" | sed -n 's/^wrote \(.*\): [0-9][0-9]* lines$/\1/p')"
-    if [[ "$brief_path" == "$repo/.superpowers/sdd/plan-a/task-1-brief.md" ]]; then
+    if [[ "$brief_path" == "$base/plan-a/task-1-brief.md" ]]; then
         pass "task-brief writes its brief under the plan's workspace"
     else
         fail "task-brief writes its brief under the plan's workspace"
@@ -139,7 +165,7 @@ PLAN
     rp_out="$(cd "$repo" && "$SDD_SCRIPTS/review-package" plan-a.md HEAD~1 HEAD)"
     rp_path="$(printf '%s\n' "$rp_out" | sed -n 's/^wrote \(.*\): [0-9].*$/\1/p')"
     case "$rp_path" in
-        "$repo/.superpowers/sdd/plan-a/review-"*.diff)
+        "$base/plan-a/review-"*.diff)
             pass "review-package writes its diff under the plan's workspace" ;;
         *)
             fail "review-package writes its diff under the plan's workspace"
@@ -168,10 +194,13 @@ PLAN
     # --- Worktree isolation: a linked worktree resolves its own workspace ---
     local wt="$TEST_ROOT/wt"
     ( cd "$repo" && git worktree add -q "$wt" -b wt-feature )
-    local wt_root wt_dir
+    local wt_root wt_id wt_dir wt_base
     wt_root="$(cd "$wt" && git rev-parse --show-toplevel)"
+    wt_id="$(project_id "$wt")"
+    wt_base="/tmp/superpowers/$wt_id/sdd"
+    CLEANUP_DIRS+=("/tmp/superpowers/$wt_id")
     wt_dir="$(cd "$wt" && "$SDD_SCRIPTS/sdd-workspace" plan-a.md)"
-    if [[ "$wt_dir" == "$wt_root/.superpowers/sdd/plan-a" && "$wt_dir" != "$dir_a" ]]; then
+    if [[ "$wt_dir" == "$wt_base/plan-a" && "$wt_dir" != "$dir_a" ]]; then
         pass "linked worktree resolves its own distinct workspace"
     else
         fail "linked worktree resolves its own distinct workspace"
@@ -182,7 +211,7 @@ PLAN
     printf 'y\n' > "$wt_dir/artifact.md"
     local wt_status
     wt_status="$(cd "$wt" && git status --porcelain)"
-    if [[ "$wt_status" != *".superpowers"* ]]; then
+    if [[ "$wt_status" != *"$wt_id"* && "$wt_status" != *".superpowers"* ]]; then
         pass "worktree workspace invisible to git status"
     else
         fail "worktree workspace invisible to git status"

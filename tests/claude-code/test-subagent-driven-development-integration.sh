@@ -37,7 +37,7 @@ TEST_PROJECT=$(create_test_project)
 echo "Test project: $TEST_PROJECT"
 
 # Trap to cleanup
-trap "cleanup_test_project $TEST_PROJECT" EXIT
+trap 'cleanup_test_project "$TEST_PROJECT"; rm -rf "/tmp/superpowers/$PROJECT_ID"' EXIT
 
 # Set up minimal Node.js project
 cd "$TEST_PROJECT"
@@ -53,10 +53,17 @@ cat > package.json <<'EOF'
 }
 EOF
 
-mkdir -p src test docs/superpowers/plans
+# Plans live outside the repo under /tmp/superpowers/<project-id>/plans/
+# (writing-plans default). Resolve the physical path the way git's
+# --show-toplevel would so the id matches what sdd-workspace computes.
+TEST_PROJECT_RESOLVED=$(cd "$TEST_PROJECT" && pwd -P)
+PROJECT_ID="$(basename "$TEST_PROJECT_RESOLVED")-$(printf %s "$TEST_PROJECT_RESOLVED" | md5sum | cut -c1-6)"
+PLAN_FILE="/tmp/superpowers/$PROJECT_ID/plans/implementation-plan.md"
+
+mkdir -p src test "$(dirname "$PLAN_FILE")"
 
 # Create a simple implementation plan
-cat > docs/superpowers/plans/implementation-plan.md <<'EOF'
+cat > "$PLAN_FILE" <<'EOF'
 # Test Implementation Plan
 
 This is a minimal plan to test the subagent-driven-development workflow.
@@ -131,8 +138,8 @@ echo ""
 OUTPUT_FILE="$TEST_PROJECT/claude-output.txt"
 
 # Create prompt file
-cat > "$TEST_PROJECT/prompt.txt" <<'EOF'
-I want you to execute the implementation plan at docs/superpowers/plans/implementation-plan.md using the subagent-driven-development skill.
+cat > "$TEST_PROJECT/prompt.txt" <<EOF
+I want you to execute the implementation plan at $PLAN_FILE using the subagent-driven-development skill.
 
 IMPORTANT: Follow the skill exactly. I will be verifying that you:
 1. Read the plan once at the beginning
@@ -146,7 +153,7 @@ EOF
 
 # Note: We use a longer timeout since this is integration testing
 # Use --allowed-tools to enable tool usage in headless mode
-PROMPT="Execute the implementation plan at docs/superpowers/plans/implementation-plan.md using the subagent-driven-development skill.
+PROMPT="Execute the implementation plan at $PLAN_FILE using the subagent-driven-development skill.
 
 IMPORTANT: Follow the skill exactly. I will be verifying that you:
 1. Read the plan once at the beginning
