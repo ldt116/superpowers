@@ -1,5 +1,13 @@
 # Superpowers Release Notes
 
+## v6.4.0.3 (2026-09-17)
+
+- New fork-only skill: `multi-dimension-review` — on-demand thorough review
+  of a git-level target via six dimension subagents (correctness, security,
+  code smells, performance, tests-regression, requirements-conventions) plus
+  a merge/verify seat applying the hardened review contract. Report-only;
+  artifacts under `/tmp/superpowers/<project-id>/reviews/`.
+
 ## v6.4.0.2 (2026-09-14)
 
 All skill artifacts moved out of the repository into `/tmp/superpowers/<project-id>/`. Fork iteration on the same upstream base; install/update from this fork's marketplace.
