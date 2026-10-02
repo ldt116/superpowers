@@ -11,6 +11,7 @@ EP_SCRIPTS="$REPO_ROOT/skills/executing-plans/scripts"
 
 FAILURES=0
 TEST_ROOT=""
+WORKSPACE=""
 
 pass() { echo "  [PASS] $1"; }
 fail() {
@@ -21,6 +22,9 @@ fail() {
 cleanup() {
     if [[ -n "$TEST_ROOT" && -d "$TEST_ROOT" ]]; then
         rm -rf "$TEST_ROOT"
+    fi
+    if [[ -n "$WORKSPACE" && -d "$WORKSPACE" ]]; then
+        rm -rf "$WORKSPACE"
     fi
 }
 
@@ -50,6 +54,12 @@ PLAN
     local base
     base="$(cd "$repo" && git rev-parse HEAD)"
 
+    # Fork workspace scheme: the SDD workspace lives outside the repo,
+    # under /tmp/superpowers/<project-id>/sdd/<plan-basename>/, resolved by
+    # sdd-workspace — the scripts under test share that single source of
+    # truth, so resolve it here instead of hardcoding a path.
+    WORKSPACE="$(cd "$repo" && bash "$REPO_ROOT/skills/subagent-driven-development/scripts/sdd-workspace" plan.md)"
+
     # --- task-start: argument validation ---
     local rc=0
     (cd "$repo" && "$EP_SCRIPTS/task-start" plan.md >/dev/null 2>&1) || rc=$?
@@ -62,7 +72,7 @@ PLAN
     # --- task-start: brief path + BASE in one call ---
     local out
     out="$(cd "$repo" && "$EP_SCRIPTS/task-start" plan.md 1)"
-    if [[ "$out" == *"brief: $repo/.superpowers/sdd/plan/task-1-brief.md"* ]]; then
+    if [[ "$out" == *"brief: $WORKSPACE/task-1-brief.md"* ]]; then
         pass "task-start prints the brief path under the plan's workspace"
     else
         fail "task-start prints the brief path under the plan's workspace"
@@ -74,7 +84,7 @@ PLAN
         fail "task-start prints BASE as the current HEAD"
         echo "    got: $out"
     fi
-    if [[ -s "$repo/.superpowers/sdd/plan/task-1-brief.md" ]]; then
+    if [[ -s "$WORKSPACE/task-1-brief.md" ]]; then
         pass "task-start writes the brief file"
     else
         fail "task-start writes the brief file"
@@ -86,7 +96,7 @@ PLAN
     head="$(cd "$repo" && git rev-parse HEAD)"
     out="$(cd "$repo" && "$EP_SCRIPTS/task-done" plan.md 1 "$base" -- sh -c 'echo "Ran 3 tests"; echo OK')"
     rc=$?
-    local ledger="$repo/.superpowers/sdd/plan/progress.md"
+    local ledger="$WORKSPACE/progress.md"
     local expected="Task 1: complete (commits ${base:0:7}..${head:0:7}, tests: sh -c 'echo \"Ran 3 tests\"; echo OK' → OK)"
     if [[ -f "$ledger" ]] && grep -qF "$expected" "$ledger"; then
         pass "task-done appends the completion line with commit range and test result"
@@ -101,7 +111,7 @@ PLAN
         fail "task-done prints the tail of the test output"
         echo "    got: $out"
     fi
-    if [[ -s "$repo/.superpowers/sdd/plan/task-1-tests.log" ]]; then
+    if [[ -s "$WORKSPACE/task-1-tests.log" ]]; then
         pass "task-done keeps the full test output in the workspace"
     else
         fail "task-done keeps the full test output in the workspace"
