@@ -11,9 +11,8 @@ This is a fork of [obra/superpowers](https://github.com/obra/superpowers), fine-
 3. **Hardened review contract.** Review seats trust code over claims (risk diffs re-verified by the reviewer, command-and-output evidence floor), never approve without requirements, audit the implementer's Self-review line, and record deferred debt beyond the workspace.
 4. **All skill artifacts live outside the repository, under `/tmp/superpowers/<project-id>/`.** Plans (`writing-plans`) and specs (`brainstorming`) are saved as files under `<id>/plans/` and `<id>/specs/` — never inside the repo (upstream commits them under `docs/superpowers/`), never posted to a tracker. `subagent-driven-development` scratch (task briefs, implementer reports, review packages, ledgers) lives in `<id>/sdd/<plan-basename>/`, and brainstorm-server sessions under `<id>/brainstorm/` (kept after stop so mockups survive). `<project-id>` is the repo root's basename plus the first 6 hex chars of the root path's md5 — per checkout, so worktrees scope separately. Nothing ever dirties `git status` or lands in a commit; the durable record is git history plus the debt register.
 5. **The main chat stays lean.** `using-superpowers` (loaded at every session start) carries a "Keep the Main Chat Lean" contract: the main conversation holds decisions, dispatches, and conclusions; file contents, command output, and diffs reach it only as targeted extracts or subagent digests, never bulk payloads — sessions stay fast, cheap, and resistant to compaction loss. `subagent-driven-development` extends the same rule to its boundaries: dispatches carry the return contract (short status back, detail in the report file), and tracker-bound bodies — issue comments, PR bodies — are composed as files and posted by path, never inline.
-6. **Single-model dispatch.** No model-tier guidance anywhere: subagents inherit the session's model, because the fork runs on one custom endpoint — an explicit model name on a dispatch would route it off that endpoint. Fix-loop rounds escalate with a fresh implementer and a reworked brief, not a bigger model.
-7. **On-demand multi-dimension review.** A fork-only skill, `multi-dimension-review`: a thorough review of a diff, branch, or commit range is split across six clean-context dimension subagents (correctness, security, code smells, performance, tests/regression, requirements/conventions) whose findings a merge/verify seat dedupes, re-verifies when risk-bearing, and grades — report-only, artifacts outside the repo, no model selection.
-8. **Cross-machine status handoff.** A fork-only skill, `status-handoff`: when agents on different machines share only a git remote, work status lives in refs — `refs/heads/status/<key>-dev|ready-review|changes|merged|closed` (ref name = state, SHA = payload), one live status ref per task, each transition pushes the new ref then deletes the old in the same turn so the board is self-cleaning. Detection is a silent `git ls-remote` snapshot-diff monitor — token-free, identical on every forge; tracker tooling is read exactly once per event, for details/confirmation. Each side watches only the states the other pushes, so transitions never wake their own author.
+6. **On-demand multi-dimension review.** A fork-only skill, `multi-dimension-review`: a thorough review of a diff, branch, or commit range is split across six clean-context dimension subagents (correctness, security, code smells, performance, tests/regression, requirements/conventions) whose findings a merge/verify seat dedupes, re-verifies when risk-bearing, and grades — report-only, artifacts outside the repo, dispatches carry no `model:` field.
+7. **Cross-machine status handoff.** A fork-only skill, `status-handoff`: when agents on different machines share only a git remote, work status lives in refs — `refs/heads/status/<key>-dev|ready-review|changes|merged|closed` (ref name = state, SHA = payload), one live status ref per task, each transition pushes the new ref then deletes the old in the same turn so the board is self-cleaning. Detection is a silent `git ls-remote` snapshot-diff monitor — token-free, identical on every forge; tracker tooling is read exactly once per event, for details/confirmation. Each side watches only the states the other pushes, so transitions never wake their own author.
 
 See `CLAUDE.md` for the divergence list agents working in this repo follow.
 
@@ -56,8 +55,11 @@ Superpowers is a complete software development methodology for your coding agent
   - [Kimi Code](#kimi-code)
   - [OpenCode](#opencode)
   - [Pi](#pi)
+  - [Qwen Code](#qwen-code)
   - [Hermes Agent](#hermes-agent)
+  - [Muse](#muse)
 - [The Basic Workflow](#the-basic-workflow)
+- [When Something Goes Wrong](#when-something-goes-wrong)
 - [Community](#community)
 - [What's Inside](#whats-inside)
 - [Philosophy](#philosophy)
@@ -282,6 +284,22 @@ pi -e /path/to/superpowers
 
 The Pi package loads the Superpowers skills and a small extension that injects the `using-superpowers` bootstrap at session startup and again after compaction. Pi has native skills, so no compatibility `Skill` tool is required. Subagent and task-list tools remain optional Pi companion packages.
 
+### Qwen Code
+
+Qwen Code installs plugins from Claude Code marketplaces directly.
+
+- Install the plugin from this repository, and pick `superpowers` when prompted:
+
+  ```bash
+  qwen extensions install obra/superpowers
+  ```
+
+- Update later:
+
+  ```bash
+  qwen extensions update superpowers
+  ```
+
 ### Hermes Agent
 
 Install Superpowers as a Hermes plugin from this repository:
@@ -294,6 +312,33 @@ Restart any active Hermes sessions after installing. Note: Hermes has no
 post-compaction hook, so a very long session that compacts over its first
 turn loses the bootstrap — start a fresh session if skills stop triggering.
 
+### Muse
+
+Superpowers is available as a native Muse plugin — same repo, same skills, all harnesses. The `using-superpowers` bootstrap is injected via the native `SessionStart` hook alongside Claude Code, Codex, Cursor, Gemini, Pi, and the rest — no per-session opt-in.
+
+- Install from a local checkout:
+
+  ```bash
+  muse plugins install ./
+  muse plugins approve superpowers
+  ```
+
+  Or clone and install:
+
+  ```bash
+  git clone https://github.com/obra/superpowers.git
+  muse plugins install ./superpowers
+  muse plugins approve superpowers
+  ```
+
+- Update later:
+
+  ```bash
+  muse plugins update superpowers
+  ```
+
+Restart any active Muse sessions after installing so the `SessionStart` hook takes effect — skills are active immediately, hooks require approval on first install. To verify, start a fresh session and send `Let's make a react todo list` — a working install auto-triggers `brainstorming` before any code is written. Version is tracked in `.version-bump.json` so `scripts/bump-version.sh` keeps it in sync.
+
 ## The Basic Workflow
 
 1. **brainstorming** - Activates before writing code. Refines rough ideas through questions, explores alternatives, presents design in sections for validation. Saves design document.
@@ -302,7 +347,7 @@ turn loses the bootstrap — start a fresh session if skills stop triggering.
 
 3. **writing-plans** - Activates with approved design. Breaks work into bite-sized tasks (2-5 minutes each). Every task has exact file paths, complete code, verification steps.
 
-4. **subagent-driven-development** or **executing-plans** - Activates with plan. Dispatches fresh subagent per task with two-stage review (spec compliance, then code quality), or executes in batches with human checkpoints.
+4. **subagent-driven-development** (default) or **executing-plans** (fallback) - Activates with plan. In this fork, subagent-driven development is the default: it dispatches a fresh subagent per task with a review after each. `executing-plans` is the fallback for harnesses without subagent access — inline execution in the current session, still with an independent review after every task plus one final review of the whole branch.
 
 5. **test-driven-development** - Activates during implementation. Enforces RED-GREEN-REFACTOR: write failing test, watch it fail, write minimal code, watch it pass, commit. Deletes code written before tests.
 
@@ -311,6 +356,12 @@ turn loses the bootstrap — start a fresh session if skills stop triggering.
 7. **finishing-a-development-branch** - Activates when tasks complete. Verifies tests, presents options (merge/PR/keep/discard), cleans up worktree.
 
 **The agent checks for relevant skills before any task.** Mandatory workflows, not suggestions.
+
+## When Something Goes Wrong
+
+Sometimes a session misbehaves: a skill fires when it shouldn't, stays silent when it should, or the agent ignores its plan, repeats work, or burns more tokens than you'd expect. Ask your coding agent to "figure out what went wrong with superpowers in this session" and it will invoke the **diagnosing-superpowers** skill. To examine an earlier session, name it: "figure out what went wrong with superpowers in session `<id>`".
+
+The skill reads the session transcript, reports what happened with line-level evidence, and, if you want, packages a scrubbed bundle for a bug report.
 
 ## Community
 
@@ -330,11 +381,12 @@ Superpowers is built by [Jesse Vincent](https://blog.fsck.com) and the rest of t
 **Debugging**
 - **systematic-debugging** - 4-phase root cause process (includes root-cause-tracing, defense-in-depth, condition-based-waiting techniques)
 - **verification-before-completion** - Ensure it's actually fixed
+- **diagnosing-superpowers** - Work out what went wrong in a session, with evidence; export a scrubbed bundle or file an issue
 
 **Collaboration** 
 - **brainstorming** - Socratic design refinement
 - **writing-plans** - Detailed implementation plans
-- **executing-plans** - Batch execution with checkpoints
+- **executing-plans** - Inline plan execution, the fallback for harnesses without subagent access — per-task review plus a final whole-plan review
 - **dispatching-parallel-agents** - Concurrent subagent workflows
 - **requesting-code-review** - Pre-review checklist
 - **receiving-code-review** - Responding to feedback
