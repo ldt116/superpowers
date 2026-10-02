@@ -49,7 +49,7 @@ base="/tmp/superpowers/$id/sdd"
 # Normalize the plan path (physical directory, so relative/absolute/../
 # spellings of one plan compare equal) and express it as the marker value:
 # repo-relative when the plan lives under the repo root, absolute otherwise.
-plan_dir=$(CDPATH= cd -- "$(dirname "$plan")" && pwd -P)
+plan_dir=$(CDPATH='' cd -- "$(dirname "$plan")" && pwd -P)
 plan_abs="$plan_dir/$(basename "$plan")"
 case "$plan_abs" in
   "$root"/*) plan_id=${plan_abs#"$root"/} ;;
@@ -80,4 +80,4 @@ if ! owns "$dir"; then
   fi
 fi
 
-CDPATH= cd -- "$dir" && pwd
+CDPATH='' cd -- "$dir" && pwd

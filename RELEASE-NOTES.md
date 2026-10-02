@@ -1,5 +1,26 @@
 # Superpowers Release Notes
 
+## v6.4.2.1 (2026-10-02)
+
+Upstream v6.4.1–v6.4.2 merged. Fork iteration on the new base; install/update
+from this fork's marketplace.
+
+### Merged from Upstream
+
+- **`diagnosing-superpowers`** (new skill), **leaner `writing-plans`** output, the
+  **native `executing-plans` rewrite** (re-forked: the fork's per-task independent
+  review gate and `/tmp` SDD workspace are re-applied on top), **Muse/OpenCode
+  2.0/Codex hooks**, and the **restored Gemini plugin** support.
+- `.version-bump.json` from upstream now tracks `.muse-plugin/` manifests; all
+  declared version fields bumped to `6.4.2.1`.
+
+### Divergences
+
+- **Divergence #7 (single-model dispatch) is dropped** — upstream's model
+  selection in `subagent-driven-development` dispatches is adopted; divergence
+  lists in CLAUDE.md and README renumbered.
+- All other fork divergences are preserved on the new base.
+
 ## v6.4.0.3 (2026-09-17)
 
 - New fork-only skill: `multi-dimension-review` — on-demand thorough review

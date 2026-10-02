@@ -218,8 +218,7 @@ PLAN
     # --- Worktree isolation: a linked worktree resolves its own workspace ---
     local wt="$TEST_ROOT/wt"
     ( cd "$repo" && git worktree add -q "$wt" -b wt-feature )
-    local wt_root wt_id wt_dir wt_base
-    wt_root="$(cd "$wt" && git rev-parse --show-toplevel)"
+    local wt_id wt_dir wt_base
     wt_id="$(project_id "$wt")"
     wt_base="/tmp/superpowers/$wt_id/sdd"
     CLEANUP_DIRS+=("/tmp/superpowers/$wt_id")
