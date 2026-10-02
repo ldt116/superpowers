@@ -249,7 +249,7 @@ PLAN
     chmod -x "$stripped"/*
     local noexec_out noexec_rc=0
     noexec_out="$(cd "$repo" && bash "$stripped/task-brief" plan-b.md 1 2>&1)" || noexec_rc=$?
-    if [[ "$noexec_rc" -eq 0 && -f "$repo/.superpowers/sdd/plan-b/task-1-brief.md" ]]; then
+    if [[ "$noexec_rc" -eq 0 && -f "$base/plan-b/task-1-brief.md" ]]; then
         pass "task-brief works with no exec bit on sdd-workspace"
     else
         fail "task-brief works with no exec bit on sdd-workspace"
@@ -298,11 +298,11 @@ PLAN
 
     # --- Legacy adoption: pre-existing workspace without a marker ---
     printf '# Foo\n\n## Task 1: Foo\n\nFoo.\n' > "$repo/foo.md"
-    mkdir -p "$repo/.superpowers/sdd/foo"
-    printf 'ledger\n' > "$repo/.superpowers/sdd/foo/progress.md"
+    mkdir -p "$base/foo"
+    printf 'ledger\n' > "$base/foo/progress.md"
     local dir_foo
     dir_foo="$(cd "$repo" && "$SDD_SCRIPTS/sdd-workspace" foo.md)"
-    if [[ "$dir_foo" == "$repo/.superpowers/sdd/foo" \
+    if [[ "$dir_foo" == "$base/foo" \
         && -f "$dir_foo/progress.md" \
         && "$(cat "$dir_foo/plan-path" 2>/dev/null)" == "foo.md" ]]; then
         pass "legacy markerless workspace is adopted in place and marked"
@@ -314,20 +314,20 @@ PLAN
 
     # --- Ownership conflict: marker names a different plan ---
     printf '# Bar\n\n## Task 1: Bar\n\nBar.\n' > "$repo/bar.md"
-    mkdir -p "$repo/.superpowers/sdd/bar"
-    printf 'somewhere-else/bar.md\n' > "$repo/.superpowers/sdd/bar/plan-path"
-    printf 'other ledger\n' > "$repo/.superpowers/sdd/bar/progress.md"
+    mkdir -p "$base/bar"
+    printf 'somewhere-else/bar.md\n' > "$base/bar/plan-path"
+    printf 'other ledger\n' > "$base/bar/progress.md"
     local dir_bar
     dir_bar="$(cd "$repo" && "$SDD_SCRIPTS/sdd-workspace" bar.md)"
-    if [[ "$dir_bar" == "$repo/.superpowers/sdd/bar-repo" \
+    if [[ "$dir_bar" == "$base/bar-repo" \
         && "$(cat "$dir_bar/plan-path" 2>/dev/null)" == "bar.md" ]]; then
         pass "owned workspace disambiguates with parent-dir suffix"
     else
         fail "owned workspace disambiguates with parent-dir suffix"
         echo "    got: $dir_bar"
     fi
-    if [[ "$(cat "$repo/.superpowers/sdd/bar/plan-path")" == "somewhere-else/bar.md" \
-        && "$(cat "$repo/.superpowers/sdd/bar/progress.md")" == "other ledger" ]]; then
+    if [[ "$(cat "$base/bar/plan-path")" == "somewhere-else/bar.md" \
+        && "$(cat "$base/bar/progress.md")" == "other ledger" ]]; then
         pass "conflicting plan leaves the original workspace untouched"
     else
         fail "conflicting plan leaves the original workspace untouched"
@@ -335,12 +335,12 @@ PLAN
 
     # --- Counter fallback: parent-suffixed workspace is owned too ---
     printf '# Baz\n\n## Task 1: Baz\n\nBaz.\n' > "$repo/baz.md"
-    mkdir -p "$repo/.superpowers/sdd/baz" "$repo/.superpowers/sdd/baz-repo"
-    printf 'one/baz.md\n' > "$repo/.superpowers/sdd/baz/plan-path"
-    printf 'two/baz.md\n' > "$repo/.superpowers/sdd/baz-repo/plan-path"
+    mkdir -p "$base/baz" "$base/baz-repo"
+    printf 'one/baz.md\n' > "$base/baz/plan-path"
+    printf 'two/baz.md\n' > "$base/baz-repo/plan-path"
     local dir_baz
     dir_baz="$(cd "$repo" && "$SDD_SCRIPTS/sdd-workspace" baz.md)"
-    if [[ "$dir_baz" == "$repo/.superpowers/sdd/baz-repo-2" \
+    if [[ "$dir_baz" == "$base/baz-repo-2" \
         && "$(cat "$dir_baz/plan-path" 2>/dev/null)" == "baz.md" ]]; then
         pass "double conflict falls back to a counter suffix"
     else
@@ -370,7 +370,7 @@ PLAN
     local outside_abs dir_out
     outside_abs="$(cd "$TEST_ROOT/outside" && pwd -P)/remote-plan.md"
     dir_out="$(cd "$repo" && "$SDD_SCRIPTS/sdd-workspace" "$TEST_ROOT/outside/remote-plan.md")"
-    if [[ "$dir_out" == "$repo/.superpowers/sdd/remote-plan" \
+    if [[ "$dir_out" == "$base/remote-plan" \
         && "$(cat "$dir_out/plan-path" 2>/dev/null)" == "$outside_abs" ]]; then
         pass "out-of-repo plan gets a basename slug and an absolute-path marker"
     else
