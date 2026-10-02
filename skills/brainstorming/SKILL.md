@@ -43,10 +43,11 @@ selected path's prerequisites:
 
 - Spike: the human partner approves the question and probe.
 - Bounded: the human partner approves the short in-chat design.
-- Architectural: the human partner reviews and approves the written spec,
-  then reviews the written implementation plan and selects its execution
-  method. Conversational design approval only permits writing the spec;
-  written-spec approval only permits invoking writing-plans.
+- Architectural: the human partner reviews and approves the written spec.
+  writing-plans then saves the implementation plan and hands execution to
+  a fresh session — there is no execution method to select. Conversational
+  design approval only permits writing the spec; written-spec approval
+  only permits invoking writing-plans.
 
 A reply approves the stage actually presented. Approval of an idea or
 feature scope does not approve artifacts that do not exist yet. Resume
