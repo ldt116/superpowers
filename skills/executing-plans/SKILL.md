@@ -1,6 +1,6 @@
 ---
 name: executing-plans
-description: Use when executing an implementation plan in the current session as the implementer yourself — the fallback for harnesses without a subagent tool, or your human partner chose inline execution at the handoff
+description: Use when executing an implementation plan in the current session as the implementer yourself — the fallback for harnesses without a subagent tool, where subagent-driven-development cannot run
 ---
 
 # Executing Plans
@@ -28,7 +28,7 @@ record that survives your own forgetting.
 ledger and the tool results carry the record.
 
 **Continuous execution:** Do not pause to check in with your human partner
-between tasks. They chose inline execution to spend less, not to answer
+between tasks. This plan runs inline to spend less, not to answer
 "should I continue?" after every task. Execute all tasks from the plan
 without stopping — the per-task review gate is not a check-in; it runs
 on the diff, not on your partner's patience.
@@ -53,16 +53,19 @@ those, stop and ask.
   `../using-superpowers/references/`). Never fabricate a dispatch; run
   the plan here. The per-task review gate runs as a fresh-eyes
   self-review in this case.
-- You have a plan from superpowers:writing-plans and your human partner
-  chose inline execution at the handoff. With subagents available, the
-  per-task review gate dispatches a fresh reviewer subagent.
+- You've fallen back to this skill because the harness has no subagent
+  tool: the superpowers:writing-plans handoff routes here only as that
+  fallback, never as a choice. If a subagent tool does exist in this
+  harness, the per-task review gate dispatches a fresh reviewer subagent
+  instead of self-reviewing.
 - Tasks are mostly independent — the same precondition as
   superpowers:subagent-driven-development.
 
 A fully specified plan makes inline execution transcription plus testing:
 it runs well on a mid-tier session model, and the one place the most
 capable model earns its cost is the final review, which this skill
-dispatches separately. Tell your human partner so when they choose inline.
+dispatches separately. Tell your human partner so when this fallback
+runs.
 
 Prefer superpowers:subagent-driven-development when subagents are
 available: it buys a fresh implementer context per task as well as a
@@ -377,7 +380,7 @@ Use superpowers:finishing-a-development-branch.
 | "I'll run the full suite at the end instead of per step" | Per-step runs are how you learn which step broke it. The end-of-task run is the contract, not a substitute. |
 | "The plan is wrong here, I'll just do the right thing" | Do the right thing and ledger the ruling. Unledgered deviation is a decision made in secret. |
 | "I'll write the ledger lines after a few tasks" | Compaction does not wait for a convenient moment. One line per task, in the same message as the commit. |
-| "Let me check in before the next task" | They chose inline to spend less. Progress prompts spend their time instead. Only the five stops stop you. |
+| "Let me check in before the next task" | Inline is the spend-less fallback. Progress prompts spend their time instead. Only the five stops stop you. |
 | "The task went green, the per-task review can wait" | Completed is not verified. The review gate runs after every task, before the next one starts. |
 | "I read my own diff carefully; the reviewer is redundant" | Same author, same blind spots. The reviewer is the fresh context every task buys. |
 | "Tests should pass, the change was trivial" | "Should" is not evidence. The contract requires the command and its output. |
