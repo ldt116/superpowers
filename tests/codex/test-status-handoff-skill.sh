@@ -39,9 +39,27 @@ if (skill / "SKILL.md").is_file():
         ("pushes the new ref first, then deletes the old one", "transition self-cleanup rule"),
         ("finishing-a-development-branch", "post-merge cleanup cross-reference"),
         ("Common Rationalizations", "rationalization table"),
+        ("work branch name", "key is the branch, not issue/PR number"),
+        ("never a subagent", "monitor is a shell loop, not a subagent poll"),
     ]:
         if needle not in text:
             errors.append(f"SKILL.md: missing {why} ({needle!r})")
+
+# Routing into the skill must survive at the two places agents actually pass through
+for f, needles in {
+    Path("skills/requesting-code-review/SKILL.md"): [
+        ("Who Reviews", "reviewer-lane decision tree"),
+        ("status-handoff", "remote-reviewer lane routes to the skill"),
+        ("Self-review does not substitute", "self-review never replaces the remote reviewer"),
+    ],
+    Path("skills/using-superpowers/SKILL.md"): [
+        ("status-handoff", "session-start routing line"),
+    ],
+}.items():
+    text = f.read_text()
+    for needle, why in needles:
+        if needle not in text:
+            errors.append(f"{f}: missing {why} ({needle!r})")
 
 for f in skill.rglob("*.md"):
     for i, line in enumerate(f.read_text().splitlines(), 1):
