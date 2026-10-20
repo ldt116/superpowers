@@ -95,6 +95,23 @@ BRANCH=$(git branch --show-current)
 See `using-git-worktrees` Step 0 and `finishing-a-development-branch`
 Step 1 for how each skill uses these signals.
 
+## Network and the Sandbox
+
+The workspace-write sandbox blocks outbound network by default. Any
+`git push` / `git fetch` / `git ls-remote` fails inside it. One-off
+commands: let Codex offer the escalation retry and your human partner
+approves it per command. Long-running network loops
+(status-handoff's monitor): request escalation for the **whole script**
+in one approval — approving `bash wait-status.sh ...` runs the entire
+loop outside the sandbox, while a loop left sandboxed fails every
+`ls-remote` and dies. If your partner wants networked git without
+per-command approvals, ask them to set in `~/.codex/config.toml`:
+
+```toml
+[sandbox_workspace_write]
+network_access = true
+```
+
 ## Codex App Finishing
 
 When the sandbox blocks branch/push operations (detached HEAD in an

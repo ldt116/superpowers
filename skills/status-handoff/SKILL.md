@@ -95,9 +95,17 @@ The monitor is a shell loop, never a subagent. A subagent asked to "keep an eye 
 #                    refs/heads/status/feat/475-merged refs/heads/status/feat/475-closed \
 #                    refs/heads/feat/475
 #   reviewer: wait-status.sh refs/heads/status/feat/475-ready-review
-prev=""
+prev=""; fails=0
 while true; do
-  cur=$(git ls-remote origin "$@" 2>/dev/null | sort) || true
+  if raw=$(git ls-remote origin "$@" 2>/dev/null); then
+    fails=0; cur=$(printf '%s\n' "$raw" | sort)
+  else
+    fails=$((fails+1))
+    if [ "$fails" -ge 3 ]; then
+      echo "wait-status: ls-remote failed ${fails}x in a row — cannot read the board" >&2
+      exit 1
+    fi
+  fi
   if [ -n "$prev" ] && [ "$cur" != "$prev" ]; then
     diff <(printf '%s\n' "$prev") <(printf '%s\n' "$cur") | grep '^[<>]'
     exit 0
@@ -107,6 +115,8 @@ done
 ```
 
 Read the output as: `>` = ref appeared or moved (new state / new head), `<` = ref removed (old state cleaned up, or the branch vanished — verify before assuming merge). If your harness caps long runners, catch the expiry notification and re-arm — expiry is not an outcome.
+
+An empty successful read is a state — the ref you're waiting for hasn't appeared yet. A failed read is not: three `ls-remote` failures in a row mean the monitor cannot see the board at all, and it exits loudly so you re-arm it where it can reach the network. Sandboxed harnesses (Codex's workspace-write blocks network) must escalate the monitor as one whole-script approval — a per-iteration denial loop is exactly the silent death the failure counter exists to catch. One-off commands (`git push`) escalate per command as usual.
 
 ## Quick Reference
 
@@ -132,4 +142,5 @@ Read the output as: `>` = ref appeared or moved (new state / new head), `<` = re
 | "The PR number is right there — I'll use it as the key" | The dev watches refs under the branch name; the PR number is the forge's channel id, not the key. Read the branch from the PR and watch what the dev actually pushes. |
 | "Branch gone, no ref — it must have merged" | Verify through the tracker before reporting done. Silent rejection is exactly what the contract exists to catch. |
 | "Review has been quiet for hours — I'll merge it myself" | Merging your own PR is your human partner's call. Surface the stall and wait. |
+| "ls-remote keeps failing but the loop is still alive" | A monitor that cannot read the board is dead, not patient. Three failures in a row and it exits loudly — re-arm it where it can reach the network. |
 | "I'll just fix the typo on the dev's branch while reviewing" | Never push to the dev's branch. Your channels are PR reviews and status transitions. |
