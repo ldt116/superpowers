@@ -33,6 +33,9 @@ prompt: |
   - You may run read-only commands (grep, git log/blame, tests) for
     evidence.
   - Do not spawn subagents. Do not modify the repo.
+  - Never write to the forge or tracker — no comments, reviews, or
+    statuses. Findings go to {WS}/findings-{DIM}.md and your return
+    message; the coordinator posts.
 
   Final message, at most 15 lines:
   Status: DONE | DONE_WITH_CONCERNS | BLOCKED

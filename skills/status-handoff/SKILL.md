@@ -51,7 +51,7 @@ Why refs and not API polling inside the wait loop: `ls-remote` needs no API toke
 
 1. Arm the monitor on `status/<key>-ready-review`. Derive the key by reading the work branch from the PR — never the PR number, never the issue number: the dev watches refs under the branch name, so any other key means watching a board nobody writes to. Wake when the ref appears or moves.
 2. Review **the SHA the ref points at** — re-verify risk paths at that commit, not at a remembered head.
-3. On a verdict:
+3. On a verdict — one tracker post per review turn, written by the session that owns the verdict: fold what your seats returned into a single review body (composed as a file, posted by path) and post it once. Seats you dispatch never write to the tracker; they return findings — an approval posted by a seat that finished early is a verdict nobody owns yet.
    - **Changes requested** — post findings to the PR via tracker tooling, then transition: push `status/<key>-changes` (pointing at the reviewed head), delete `-ready-review`. Re-arm.
    - **Approve** — merge through the forge (so PR state stays truthful), then push `status/<key>-merged` pointing at the merge commit.
    - **Reject** — close through the forge, then push `status/<key>-closed`.
@@ -144,3 +144,4 @@ An empty successful read is a state — the ref you're waiting for hasn't appear
 | "Review has been quiet for hours — I'll merge it myself" | Merging your own PR is your human partner's call. Surface the stall and wait. |
 | "ls-remote keeps failing but the loop is still alive" | A monitor that cannot read the board is dead, not patient. Three failures in a row and it exits loudly — re-arm it where it can reach the network. |
 | "I'll just fix the typo on the dev's branch while reviewing" | Never push to the dev's branch. Your channels are PR reviews and status transitions. |
+| "The lens seats each posted their verdict" | Then the PR turned into the seats' chat room — seven posts for one review turn. Seats return findings; the session that owns the verdict posts it, once. |

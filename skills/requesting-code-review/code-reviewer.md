@@ -58,6 +58,8 @@ Subagent (general-purpose):
 
     Your review is read-only on this checkout. Do not mutate the working tree, the index, HEAD, or branch state in any way. Use tools like `git show`, `git diff`, and `git log` to inspect history. If you need a working copy of a different revision, check it out into a separate temporary directory (e.g. `git worktree add /tmp/review-[SHA] [SHA]`) — never move HEAD on this checkout.
 
+Read-only extends to the forge. Never post comments, reviews, or statuses to the PR or its tracker: the coordinator that dispatched you owns every tracker write. Your report is the return channel — the verdict travels in your final message, nowhere else.
+
     ## Verification: Trust the Code, Not the Claims
 
     Tier what you verify by what the diff touches. A risk diff — a write
