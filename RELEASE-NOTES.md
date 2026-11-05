@@ -19,6 +19,9 @@ fields bumped to `7.0.2.2`.
   otherwise the helper exits 2 with a one-line fix and never chmods,
   chowns, or deletes a path it did not create. The mode check is skipped on
   MSYS/MINGW/CYGWIN, where `noacl` mounts fake mode bits.
+  A relative `SUPERPOWERS_SCRATCH_ROOT` is refused (exit 2) so artifacts
+  can't land inside the repo, `-C` ignores `CDPATH`, and the owner check
+  now has a test.
 - **Everything resolves through it.** `sdd-workspace`, the brainstorm
   server, and the `writing-plans`, `brainstorming`,
   `subagent-driven-development`, `executing-plans`, and
