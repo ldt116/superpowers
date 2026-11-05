@@ -175,6 +175,29 @@ main() {
     after=$(find "$TEST_ROOT/root-mode" -printf '%p %m\n' | sort)
     expect_refusal "refuses a root with mode 755" "$before" "$after" "must be mode 700"
 
+    # on MSYS/MINGW/CYGWIN only the mode check is skipped (noacl mounts fake
+    # modes); a stub uname on PATH stands in for the platform
+    mkdir "$TEST_ROOT/fakebin"
+    printf '#!/bin/sh\necho MINGW64_NT-10.0\n' > "$TEST_ROOT/fakebin/uname"
+    chmod +x "$TEST_ROOT/fakebin/uname"
+    mkdir "$TEST_ROOT/root-win"
+    chmod 755 "$TEST_ROOT/root-win"
+    local win_out
+    win_out=$(PATH="$TEST_ROOT/fakebin:$PATH" SUPERPOWERS_SCRATCH_ROOT="$TEST_ROOT/root-win" \
+        SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_ROOT/legacy-win" bash "$HELPER" -C "$repo") || true
+    expect "MSYS-like platform accepts a root that reads back mode 755" \
+        "$(spell "$TEST_ROOT/root-win/$id")" "$win_out"
+    mkdir -m 700 "$TEST_ROOT/winlink-target"
+    ln -s "$TEST_ROOT/winlink-target" "$TEST_ROOT/root-winlink"
+    local win_rc=0
+    win_out=$(PATH="$TEST_ROOT/fakebin:$PATH" SUPERPOWERS_SCRATCH_ROOT="$TEST_ROOT/root-winlink" \
+        SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_ROOT/legacy-win" bash "$HELPER" -C "$repo" 2>/dev/null) || win_rc=$?
+    if [[ "$win_rc" == 2 && -z "$win_out" ]]; then
+        pass "MSYS-like platform still refuses a symlinked root"
+    else
+        fail "MSYS-like platform still refuses a symlinked root (rc=$win_rc)"
+    fi
+
     # migrates own legacy dir
     mkdir -p "$TEST_ROOT/legacy-migrate/$id/plans"
     echo plan > "$TEST_ROOT/legacy-migrate/$id/plans/p.md"

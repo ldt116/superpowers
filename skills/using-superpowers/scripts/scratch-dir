@@ -63,8 +63,14 @@ fi
 [ ! -L "$root" ] || refuse "is a symlink (remove it, or set SUPERPOWERS_SCRATCH_ROOT)"
 [ -d "$root" ] || refuse "is not a directory (remove it, or set SUPERPOWERS_SCRATCH_ROOT)"
 [ -O "$root" ] || refuse "is not owned by you (remove it, or set SUPERPOWERS_SCRATCH_ROOT)"
-find "$root" -maxdepth 0 -perm 0700 | grep -q . \
-  || refuse "must be mode 700 (chmod 700 it)"
+# Git Bash/MSYS2/Cygwin mount /tmp noacl, so mode bits are faked (directories
+# read back 755) and the check would refuse every call; /tmp there is the
+# per-user %TEMP%. Skip only this check: symlink, directory, owner still run.
+case "$(uname -s)" in
+  MSYS*|MINGW*|CYGWIN*) ;;
+  *) find "$root" -maxdepth 0 -perm 0700 | grep -q . \
+       || refuse "must be mode 700 (chmod 700 it)" ;;
+esac
 
 if $want_root; then
   out=$root
