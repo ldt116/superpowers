@@ -141,11 +141,9 @@ and the new one resumes from the same ledger.
   `../subagent-driven-development/scripts/sdd-workspace PLAN_FILE` by its
   absolute path, from the working tree you're executing in — it prints
   the plan's scratch directory
-  (`/tmp/superpowers/<project-id>/sdd/<plan-basename>/`, where
-  `<project-id>` is the repo root's basename plus the first 6 hex chars of
-  the root path's md5), home to every artifact for THIS plan: ledger,
-  briefs, review packages. Another plan's directory is never yours to
-  read or write.
+  (`/tmp/superpowers-<uid>/<project-id>/sdd/<plan-basename>/`), home to
+  every artifact for THIS plan: ledger, briefs, review packages. Another
+  plan's directory is never yours to read or write.
 - The workspace lives outside the repository, under /tmp: it never
   dirties `git status`, never lands in a commit, and survives
   `git clean -fdx`. But /tmp is ephemeral — if the workspace is lost,

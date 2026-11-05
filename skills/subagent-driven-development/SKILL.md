@@ -113,7 +113,7 @@ a ledger file, not only in todos.
 - Each plan owns a workspace: at skill start, run this skill's
   `bash scripts/sdd-workspace PLAN_FILE` by its absolute path, from the
   working tree you're executing in — it prints the plan's scratch
-  directory (under `/tmp/superpowers/<project-id>/sdd/`), home to
+  directory (under `/tmp/superpowers-<uid>/<project-id>/sdd/`), home to
   every artifact for THIS plan: ledger, briefs, reports, review packages.
   Another plan's directory is never yours to read or write.
 - Workspace artifacts are machine-internal: they exist for this run's

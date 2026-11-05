@@ -3,9 +3,10 @@
 # short-lived artifacts: task briefs, implementer reports, review packages,
 # and the progress ledger. Print the plan directory's absolute path.
 #
-# One directory per plan (/tmp/superpowers/<project>/sdd/<plan-basename>/)
-# so a follow-up plan in the same project can never read or overwrite
-# another plan's artifacts. A stale ledger misread as current progress makes
+# One directory per plan (<scratch-dir>/sdd/<plan-basename>/, where
+# <scratch-dir> is <root>/<project-id> from using-superpowers/scripts/
+# scratch-dir) so a follow-up plan in the same project can never read or
+# overwrite another plan's artifacts. A stale ledger misread as current progress makes
 # controllers skip whole task sequences — plan-scoping removes that failure
 # structurally.
 #
@@ -19,10 +20,11 @@
 # legacy workspace adopts instead of detecting; acceptable, marker-less
 # workspaces age out as plans finish.
 #
-# The workspace lives outside the repository, under /tmp keyed by project id
-# (repo-root basename + first 6 hex chars of the root path's md5): scratch
-# never dirties `git status`, never lands in a commit, and survives
-# `git clean -fdx`. umask 077 keeps it owner-only on a shared machine.
+# The workspace lives outside the repository, under the per-user scratch
+# root (/tmp/superpowers-<uid>) keyed by project id: scratch never dirties
+# `git status`, never lands in a commit, and survives `git clean -fdx`. The
+# scratch-dir helper owns the root and the project id, refuses an unsafe
+# root (exit 2, no path), and umask 077 keeps the workspace owner-only.
 #
 # Single source of truth for the workspace location, so task-brief and
 # review-package cannot drift to different directories.
@@ -62,8 +64,10 @@ slug=$(basename "$plan" .md)
 # strip Unix exec bits when unpacking marketplace packages (#2040).
 toplevel=$("${BASH:-bash}" "$here/sdd-repo")
 root=$(CDPATH='' cd -- "$toplevel" && pwd -P)
-id="$(basename "$root")-$(printf %s "$root" | md5sum | cut -c1-6)"
-base="/tmp/superpowers/$id/sdd"
+# Two steps again: a failing scratch-dir (unsafe root) stops the script
+# instead of leaving $scratch empty and base="/sdd".
+scratch=$("${BASH:-bash}" "$here/../../using-superpowers/scripts/scratch-dir" -C "$root")
+base="$scratch/sdd"
 
 # Normalize the plan path (physical directory, so relative/absolute/../
 # spellings of one plan compare equal) and express it as the marker value:

@@ -11,7 +11,6 @@ EP_SCRIPTS="$REPO_ROOT/skills/executing-plans/scripts"
 
 FAILURES=0
 TEST_ROOT=""
-WORKSPACE=""
 
 pass() { echo "  [PASS] $1"; }
 fail() {
@@ -22,9 +21,6 @@ fail() {
 cleanup() {
     if [[ -n "$TEST_ROOT" && -d "$TEST_ROOT" ]]; then
         rm -rf "$TEST_ROOT"
-    fi
-    if [[ -n "$WORKSPACE" && -d "$WORKSPACE" ]]; then
-        rm -rf "$WORKSPACE"
     fi
 }
 
@@ -42,6 +38,9 @@ main() {
 
     TEST_ROOT="$(mktemp -d)"
     trap cleanup EXIT
+    # Workspaces land under the test's own temp dir, never the real /tmp.
+    export SUPERPOWERS_SCRATCH_ROOT="$TEST_ROOT/scratch"
+    export SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_ROOT/legacy"
 
     git init -q -b main "$TEST_ROOT/repo"
     local repo
@@ -67,9 +66,10 @@ PLAN
     base="$(cd "$repo" && git rev-parse HEAD)"
 
     # Fork workspace scheme: the SDD workspace lives outside the repo,
-    # under /tmp/superpowers/<project-id>/sdd/<plan-basename>/, resolved by
+    # under <scratch-root>/<project-id>/sdd/<plan-basename>/, resolved by
     # sdd-workspace — the scripts under test share that single source of
     # truth, so resolve it here instead of hardcoding a path.
+    local WORKSPACE
     WORKSPACE="$(cd "$repo" && bash "$REPO_ROOT/skills/subagent-driven-development/scripts/sdd-workspace" plan.md)"
 
     # --- task-start: argument validation ---
@@ -210,8 +210,8 @@ PLAN
     done
     # Neither in the directory (upstream's layout) nor under /tmp (the fork's).
     if [[ ! -e "$TEST_ROOT/unborn/.superpowers" && ! -e "$TEST_ROOT/no-repo/.superpowers" \
-        && ! -e "/tmp/superpowers/$(path_id "$TEST_ROOT/unborn")" \
-        && ! -e "/tmp/superpowers/$(path_id "$TEST_ROOT/no-repo")" ]]; then
+        && ! -e "$SUPERPOWERS_SCRATCH_ROOT/$(path_id "$TEST_ROOT/unborn")" \
+        && ! -e "$SUPERPOWERS_SCRATCH_ROOT/$(path_id "$TEST_ROOT/no-repo")" ]]; then
         pass "nothing is written without a usable repository"
     else
         fail "nothing is written without a usable repository"
@@ -243,7 +243,7 @@ PLAN
         echo "    got: $out"
     fi
     if [[ "$(find "$WORKSPACE" | sort; cat "$WORKSPACE/progress.md")" == "$before" && ! -e "$TEST_ROOT/no-repo/.superpowers" \
-        && ! -e "/tmp/superpowers/$(path_id "$TEST_ROOT/no-repo")" ]]; then
+        && ! -e "$SUPERPOWERS_SCRATCH_ROOT/$(path_id "$TEST_ROOT/no-repo")" ]]; then
         pass "outside any repository, task-start and task-done write nothing to the plan's repository"
     else
         fail "outside any repository, task-start and task-done write nothing to the plan's repository"
