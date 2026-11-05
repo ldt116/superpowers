@@ -222,6 +222,17 @@ else
   bad "project session was deleted or stop failed" "exists=$([[ -e "$SESS" ]] && echo yes || echo no) out=$OUT"
 fi
 
+# The parent-name half of the deletion guard: brainstorm-* outside a
+# superpowers-* root is kept.
+SESS="$TEST_ROOT/not-scratch/brainstorm-123-456"; track_dir "$SESS"
+start_session "$SESS"
+OUT="$("$STOP" "$SESS")"
+if [[ -d "$SESS" ]] && [[ "$OUT" == *stopped* ]]; then
+  ok "stop keeps a brainstorm-* session whose parent is not a superpowers-* root"
+else
+  bad "brainstorm-* session outside a superpowers-* root was deleted or stop failed" "exists=$([[ -e "$SESS" ]] && echo yes || echo no) out=$OUT"
+fi
+
 # Legacy no-project fallback /tmp/brainstorm-*: still deleted. The unique
 # name is created and removed by this test only.
 SESS="/tmp/brainstorm-stoptest-$$-$RANDOM"; track_dir "$SESS"

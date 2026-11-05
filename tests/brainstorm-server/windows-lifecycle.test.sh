@@ -26,6 +26,12 @@ SERVER_SCRIPT="$REPO_ROOT/skills/brainstorming/scripts/server.cjs"
 
 TEST_DIR="${TMPDIR:-/tmp}/brainstorm-win-test-$$"
 
+# start-server.sh puts sessions under the per-user scratch root; point it (and
+# the legacy root) into the test dir so nothing lands under the real
+# /tmp/superpowers*. cleanup() removes TEST_DIR.
+export SUPERPOWERS_SCRATCH_ROOT="$TEST_DIR/scratch"
+export SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_DIR/legacy"
+
 passed=0
 failed=0
 skipped=0
