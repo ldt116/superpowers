@@ -20,7 +20,7 @@
 # old path so a session still running an older plugin keeps resolving it.
 # Anything else in the legacy root is left alone and the new dir starts fresh.
 #
-# Test hooks: SUPERPOWERS_SCRATCH_ROOT replaces the root;
+# Test hooks: SUPERPOWERS_SCRATCH_ROOT replaces the root (absolute only);
 # SUPERPOWERS_LEGACY_SCRATCH_ROOT replaces the legacy root /tmp/superpowers.
 #
 # -C DIR runs as if started in DIR, the way git -C does.
@@ -33,7 +33,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     -C)
       [ -d "${2:-}" ] || { echo "bad -C directory: ${2:-}" >&2; exit 2; }
-      cd "$2"
+      CDPATH='' cd -- "$2"
       shift 2
       ;;
     --root)
@@ -54,6 +54,13 @@ refuse() {
   echo "scratch root $root $1" >&2
   exit 2
 }
+
+# A relative root would land artifacts under whatever directory the caller is
+# in, possibly inside the repo. Windows drive paths (C:/...) are absolute too.
+case "$root" in
+  /*|[A-Za-z]:[/\\]*) ;;
+  *) refuse "is not an absolute path (set SUPERPOWERS_SCRATCH_ROOT to one)" ;;
+esac
 
 umask 077
 if [ ! -e "$root" ] && [ ! -L "$root" ]; then

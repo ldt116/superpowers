@@ -175,6 +175,39 @@ main() {
     after=$(find "$TEST_ROOT/root-mode" -printf '%p %m\n' | sort)
     expect_refusal "refuses a root with mode 755" "$before" "$after" "must be mode 700"
 
+    # refuses a real directory owned by someone else (/ is root-owned); not
+    # testable as root, and Windows has no uid ownership to fake
+    case "$(uname -s)" in
+        MSYS*|MINGW*|CYGWIN*) ;;
+        *)
+            if [[ "$(id -u)" == 0 ]]; then
+                echo "  [SKIP] refuses a root owned by someone else (running as uid 0)"
+            else
+                RC=0
+                OUT=$(SUPERPOWERS_SCRATCH_ROOT=/ SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_ROOT/legacy-foreign" \
+                    bash "$HELPER" -C "$repo" 2>"$TEST_ROOT/err-foreign") || RC=$?
+                ERR=$(cat "$TEST_ROOT/err-foreign")
+                expect_refusal "refuses a root owned by someone else" "-" "-" "is not owned by you"
+            fi
+            ;;
+    esac
+
+    # refuses a relative root; nothing is created under the working directory
+    mkdir "$TEST_ROOT/cwd"
+    RC=0
+    OUT=$(cd "$TEST_ROOT/cwd" && SUPERPOWERS_SCRATCH_ROOT="rel-root" \
+        SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_ROOT/legacy-rel" bash "$HELPER" -C "$repo" 2>"$TEST_ROOT/err-rel") || RC=$?
+    ERR=$(cat "$TEST_ROOT/err-rel")
+    expect_refusal "refuses a relative root" "" "$(ls -A "$TEST_ROOT/cwd")" "scratch root rel-root is not an absolute path"
+
+    # -C resolves a relative DIR as given, whatever CDPATH holds
+    mkdir -p "$TEST_ROOT/cdp/sub" "$TEST_ROOT/sub"
+    local cdp_out
+    cdp_out=$(cd "$TEST_ROOT" && CDPATH="$TEST_ROOT/cdp" SUPERPOWERS_SCRATCH_ROOT="$TEST_ROOT/root-cdp" \
+        SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_ROOT/legacy-cdp" bash "$HELPER" -C sub 2>&1) || true
+    expect "-C ignores CDPATH" \
+        "$(spell "$TEST_ROOT/root-cdp/$(path_id "$TEST_ROOT/sub")")" "$cdp_out"
+
     # on MSYS/MINGW/CYGWIN only the mode check is skipped (noacl mounts fake
     # modes); a stub uname on PATH stands in for the platform
     mkdir "$TEST_ROOT/fakebin"

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Tests for the SDD workspace: scripts/sdd-workspace resolves a PER-PLAN
-# scratch directory under <scratch-root>/<project-id>/sdd/ (the per-user scratch root) — outside the
-# repository, owner-only — and the SDD scripts write into their plan's
-# directory.
+# scratch directory under <scratch-root>/<project-id>/sdd/ (the per-user
+# scratch root) — outside the repository, owner-only — and the SDD scripts
+# write into their plan's directory.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

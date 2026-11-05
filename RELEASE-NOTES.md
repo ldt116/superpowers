@@ -28,8 +28,8 @@ fields bumped to `7.0.2.2`.
   `superpowers-*` parent. Divergence #5 in CLAUDE.md and the README fork
   section are updated to match; #7's artifact path follows.
 - **Migration.** When `<root>/<project-id>` does not exist and the legacy
-  `/tmp/superpowers/<project-id>` is a real directory you own (in a real
-  directory you own), it is moved over and a symlink is left at the old
+  `/tmp/superpowers/<project-id>` is a real directory you own inside a legacy
+  root you own, it is moved over and a symlink is left at the old
   path, so a session still running an older plugin keeps resolving it.
   Anything else in the legacy root is left alone and the new directory
   starts fresh.

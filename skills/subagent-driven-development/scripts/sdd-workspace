@@ -6,9 +6,9 @@
 # One directory per plan (<scratch-dir>/sdd/<plan-basename>/, where
 # <scratch-dir> is <root>/<project-id> from using-superpowers/scripts/
 # scratch-dir) so a follow-up plan in the same project can never read or
-# overwrite another plan's artifacts. A stale ledger misread as current progress makes
-# controllers skip whole task sequences — plan-scoping removes that failure
-# structurally.
+# overwrite another plan's artifacts. A stale ledger misread as current
+# progress makes controllers skip whole task sequences — plan-scoping removes
+# that failure structurally.
 #
 # Basename slugs collide when two plans share a filename (plans/alpha/plan.md
 # vs plans/beta/plan.md), so each workspace records its owning plan's path in
