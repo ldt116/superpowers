@@ -243,10 +243,10 @@ or two each and goes straight to your human partner, without the
 builder check.
 
 **Where it goes:** in a software repo,
-`/tmp/superpowers/<project>/specs/YYYY-MM-DD-<topic>-design.md` — a file
-only: never inside the repo, never posted to a tracker, never committed.
-`<project>` is the repo root's basename plus the first 6 hex chars of the
-root path's md5 (e.g. `superpowers-3f9c2e`). Otherwise, pick a sensible
+`<scratch>/specs/YYYY-MM-DD-<topic>-design.md` — a file only: never inside
+the repo, never posted to a tracker, never committed. `<scratch>` is what
+`../using-superpowers/scripts/scratch-dir` prints, run by its absolute path
+from the working tree you're executing in. Otherwise, pick a sensible
 place and say where. Your human partner's preferences override both.
 
 **Builder check** (for a project): dispatch a fresh subagent with

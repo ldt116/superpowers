@@ -109,26 +109,36 @@ function removeShellPath(p) {
   execFileSync('bash', ['-c', 'rm -rf "$1"', 'bash', p], { stdio: 'ignore' });
 }
 
+// start-server.sh puts session files under <scratch-root>/<project-id>/brainstorm/;
+// the scratch root (and the legacy root) are pointed into a temp dir so the
+// tests never touch the real /tmp/superpowers*.
+const TEST_ROOT = fs.mkdtempSync(path.join(process.env.TMPDIR || '/tmp', 'bs-scratch-'));
+const SCRATCH_ROOT = path.join(TEST_ROOT, 'scratch');
+const SCRATCH_ENV = {
+  SUPERPOWERS_SCRATCH_ROOT: SCRATCH_ROOT,
+  SUPERPOWERS_LEGACY_SCRATCH_ROOT: path.join(TEST_ROOT, 'legacy')
+};
+process.on('exit', () => fs.rmSync(TEST_ROOT, { recursive: true, force: true }));
+
+function projectScratch(projectDir) {
+  // <root>/<basename>-<md5(physical path)[:6]>, the id scratch-dir computes.
+  const phys = fs.realpathSync(projectDir);
+  const md5 = require('crypto').createHash('md5').update(phys).digest('hex').slice(0, 6);
+  return path.join(SCRATCH_ROOT, `${path.basename(phys)}-${md5}`);
+}
+
 function removeProjectScratch(projectDir) {
-  // Session files live under /tmp/superpowers/<project-id>/brainstorm/, outside
-  // the project dir — remove them by the same id start-server.sh computes.
-  execFileSync('bash', [
-    '-lc',
-    'id="$(basename "$1")-$(printf %s "$1" | md5sum | cut -c1-6)"; rm -rf "/tmp/superpowers/$id"',
-    'bash',
-    projectDir
-  ], { stdio: 'ignore' });
+  fs.rmSync(projectScratch(projectDir), { recursive: true, force: true });
 }
 
 function newestSessionDir(projectDir) {
-  const sessionDir = execFileSync('bash', [
-    '-lc',
-    'id="$(basename "$1")-$(printf %s "$1" | md5sum | cut -c1-6)"; find "/tmp/superpowers/$id/brainstorm" -mindepth 1 -maxdepth 1 -type d -print | sort | tail -1',
-    'bash',
-    projectDir
-  ], { encoding: 'utf8' }).trim();
-  assert(sessionDir, `expected at least one session dir under /tmp/superpowers/<id>/brainstorm for ${projectDir}`);
-  return sessionDir;
+  const base = path.join(projectScratch(projectDir), 'brainstorm');
+  const sessions = fs.readdirSync(base, { withFileTypes: true })
+    .filter(e => e.isDirectory())
+    .map(e => path.join(base, e.name))
+    .sort();
+  assert(sessions.length, `expected at least one session dir under ${base}`);
+  return sessions[sessions.length - 1];
 }
 
 async function runTests() {
@@ -184,21 +194,21 @@ async function runTests() {
     let sessionDir = null;
     try {
       if (isWindowsLikeShell()) {
-        startProcess = spawn('bash', [START, '--project-dir', dir, '--idle-timeout-minutes', '5']);
+        startProcess = spawn('bash', [START, '--project-dir', dir, '--idle-timeout-minutes', '5'], { env: { ...process.env, ...SCRATCH_ENV } });
         info = firstServerStarted(await waitForStartedOutput(startProcess));
       } else {
-        const out = execFileSync('bash', [START, '--project-dir', dir, '--idle-timeout-minutes', '5', '--background'], { encoding: 'utf8' });
+        const out = execFileSync('bash', [START, '--project-dir', dir, '--idle-timeout-minutes', '5', '--background'], { encoding: 'utf8', env: { ...process.env, ...SCRATCH_ENV } });
         info = firstServerStarted(out);
       }
       sessionDir = newestSessionDir(dir);
       assert.strictEqual(info.idle_timeout_ms, 5 * 60 * 1000, '5 minutes -> 300000 ms');
     } finally {
-      if (sessionDir) execFileSync('bash', [STOP, sessionDir], { stdio: 'ignore' });
+      if (sessionDir) execFileSync('bash', [STOP, sessionDir], { stdio: 'ignore', env: { ...process.env, ...SCRATCH_ENV } });
       if (startProcess && !await waitForExit(startProcess, 3000)) {
         await killAndWait(startProcess);
       }
-      removeShellPath(dir);
       removeProjectScratch(dir);
+      removeShellPath(dir);
     }
   });
 

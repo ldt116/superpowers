@@ -14,6 +14,13 @@ PASS=0; FAIL=0
 PIDS=()
 DIRS=()
 
+# Session deletion is keyed on the scratch root's name (superpowers-*), so the
+# test root keeps that shape and lives in a temp dir, never the real /tmp.
+TEST_ROOT="$(mktemp -d)"
+export SUPERPOWERS_SCRATCH_ROOT="$TEST_ROOT/superpowers-test"
+export SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_ROOT/legacy"
+mkdir -p "$SUPERPOWERS_SCRATCH_ROOT"
+
 cleanup() {
   for pid in "${PIDS[@]}"; do
     kill -9 "$pid" 2>/dev/null || true
@@ -22,6 +29,7 @@ cleanup() {
   for dir in "${DIRS[@]}"; do
     rm -rf "$dir"
   done
+  rm -rf "$TEST_ROOT"
 }
 trap cleanup EXIT
 
@@ -176,6 +184,53 @@ if kill -0 "$IMPOSTOR" 2>/dev/null; then
   esac
 else
   bad "killed process despite malformed instance id" "$OUT"
+fi
+
+# --- Test 7-9: which session dirs stop deletes ---
+# A started-and-stopped session: a real server with a matching instance id.
+start_session() {
+  local sess="$1" id
+  mkdir -p "$sess/content" "$sess/state"
+  id="$(new_server_id)"
+  printf '%s\n' "$id" > "$sess/state/server-instance-id"
+  BRAINSTORM_DIR="$sess" BRAINSTORM_PORT=0 node "$SERVER" "--brainstorm-server-id=$id" > /dev/null 2>&1 &
+  SRV=$!
+  track_pid "$SRV"
+  disown "$SRV" 2>/dev/null || true
+  for _ in $(seq 1 40); do
+    [[ -f "$sess/state/server-info" ]] && break
+    sleep 0.1
+  done
+  echo "$SRV" > "$sess/state/server.pid"
+}
+
+SESS="$SUPERPOWERS_SCRATCH_ROOT/brainstorm-123-456"; track_dir "$SESS"
+start_session "$SESS"
+OUT="$("$STOP" "$SESS")"
+if [[ ! -e "$SESS" ]] && [[ "$OUT" == *stopped* ]]; then
+  ok "stop deletes a no-project session under the scratch root"
+else
+  bad "no-project session under the scratch root was not deleted" "exists=$([[ -e "$SESS" ]] && echo yes || echo no) out=$OUT"
+fi
+
+SESS="$SUPERPOWERS_SCRATCH_ROOT/myapp-3f9c2e/brainstorm/123-456"; track_dir "$SESS"
+start_session "$SESS"
+OUT="$("$STOP" "$SESS")"
+if [[ -d "$SESS" ]] && [[ "$OUT" == *stopped* ]]; then
+  ok "stop keeps a project session"
+else
+  bad "project session was deleted or stop failed" "exists=$([[ -e "$SESS" ]] && echo yes || echo no) out=$OUT"
+fi
+
+# Legacy no-project fallback /tmp/brainstorm-*: still deleted. The unique
+# name is created and removed by this test only.
+SESS="/tmp/brainstorm-stoptest-$$-$RANDOM"; track_dir "$SESS"
+start_session "$SESS"
+OUT="$("$STOP" "$SESS")"
+if [[ ! -e "$SESS" ]] && [[ "$OUT" == *stopped* ]]; then
+  ok "stop deletes a legacy /tmp/brainstorm-* session"
+else
+  bad "legacy /tmp/brainstorm-* session was not deleted" "exists=$([[ -e "$SESS" ]] && echo yes || echo no) out=$OUT"
 fi
 
 echo "--- Results: $PASS passed, $FAIL failed ---"

@@ -7,8 +7,10 @@
 #
 # Options:
 #   --project-dir <path>  Store session files under
-#                         /tmp/superpowers/<project-id>/brainstorm/
-#                         (outside the repo). Files persist after server stops.
+#                         <scratch-dir>/brainstorm/, the per-user scratch
+#                         directory from using-superpowers/scripts/scratch-dir
+#                         (/tmp/superpowers-<uid>/<project-id>/, outside the
+#                         repo). Files persist after server stops.
 #   --host <bind-host>    Host/interface to bind (default: 127.0.0.1).
 #                         Use 0.0.0.0 in remote/containerized environments.
 #   --url-host <host>     Hostname shown in returned URL JSON.
@@ -19,6 +21,27 @@
 #   --background          Force background mode (overrides Codex auto-foreground).
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRATCH_DIR_HELPER="$SCRIPT_DIR/../../using-superpowers/scripts/scratch-dir"
+
+# Run the scratch-dir helper with the given args and leave its path in
+# SCRATCH_OUT (set, not printed, so the exit below leaves this shell).
+# On failure (unsafe root) print the script's JSON error with the helper's
+# one-line message (backslashes and double quotes escaped) and exit 1. stderr
+# is kept apart from stdout: the helper may warn there on success.
+scratch_dir() {
+  local err_file msg
+  err_file="$(mktemp)"
+  if SCRATCH_OUT="$("${BASH:-bash}" "$SCRATCH_DIR_HELPER" "$@" 2>"$err_file")"; then
+    rm -f "$err_file"
+    return 0
+  fi
+  msg="$(head -n 1 "$err_file")"
+  rm -f "$err_file"
+  msg="${msg//\\/\\\\}"
+  msg="${msg//\"/\\\"}"
+  echo "{\"error\": \"${msg}\"}"
+  exit 1
+}
 
 # Parse arguments
 PROJECT_DIR=""
@@ -122,17 +145,19 @@ if [[ -n "$PROJECT_DIR" ]]; then
     echo "{\"error\": \"Cannot create or enter --project-dir\"}"
     exit 1
   fi
-  # Scratch lives outside the repo under /tmp/superpowers/<project-id>/,
-  # keyed like SDD workspaces (path basename + first 6 hex chars of the
-  # path's md5), so the repo never carries untracked brainstorm files.
-  project_id="$(basename "$PROJECT_DIR")-$(printf %s "$PROJECT_DIR" | md5sum | cut -c1-6)"
-  SESSION_DIR="/tmp/superpowers/${project_id}/brainstorm/${SESSION_ID}"
+  # Scratch lives outside the repo under the per-user scratch directory
+  # (<root>/<project-id>), so the repo never carries untracked brainstorm
+  # files. A failing helper (unsafe root) exits inside scratch_dir.
+  scratch_dir -C "$PROJECT_DIR"
+  scratch="$SCRATCH_OUT"
+  SESSION_DIR="${scratch}/brainstorm/${SESSION_ID}"
   # Persist the bound port and key per project so a restart reuses them and an
   # already-open browser tab reconnects to the same URL with a valid cookie.
-  export BRAINSTORM_PORT_FILE="/tmp/superpowers/${project_id}/brainstorm/.last-port"
-  export BRAINSTORM_TOKEN_FILE="/tmp/superpowers/${project_id}/brainstorm/.last-token"
+  export BRAINSTORM_PORT_FILE="${scratch}/brainstorm/.last-port"
+  export BRAINSTORM_TOKEN_FILE="${scratch}/brainstorm/.last-token"
 else
-  SESSION_DIR="/tmp/brainstorm-${SESSION_ID}"
+  scratch_dir --root
+  SESSION_DIR="${SCRATCH_OUT}/brainstorm-${SESSION_ID}"
 fi
 
 STATE_DIR="${SESSION_DIR}/state"
