@@ -6,8 +6,8 @@ Part of superpowers:executing-plans. Every task is complete and reviewed.
 
 After all tasks: one review of the entire branch diff against the FULL
 plan — not only the last task. Run
-`bash skills/subagent-driven-development/scripts/review-package PLAN_FILE MERGE_BASE HEAD`
-(MERGE_BASE = the commit the branch started from, e.g.
+`../subagent-driven-development/scripts/review-package PLAN_FILE MERGE_BASE HEAD`
+by its absolute path, from the working tree you're executing in (MERGE_BASE = the commit the branch started from, e.g.
 `git merge-base main HEAD`) and review from the file it prints. Point the
 reviewer at every task review's recorded non-critical findings so it can
 re-grade them against the whole branch.

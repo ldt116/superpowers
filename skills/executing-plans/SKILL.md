@@ -138,8 +138,9 @@ The workspace and ledger are shared with superpowers:subagent-driven-development
 and the new one resumes from the same ledger.
 
 - Each plan owns a workspace: at skill start, run
-  `bash skills/subagent-driven-development/scripts/sdd-workspace PLAN_FILE`
-  — it prints the plan's scratch directory
+  `../subagent-driven-development/scripts/sdd-workspace PLAN_FILE` by its
+  absolute path, from the working tree you're executing in — it prints
+  the plan's scratch directory
   (`/tmp/superpowers/<project-id>/sdd/<plan-basename>/`, where
   `<project-id>` is the repo root's basename plus the first 6 hex chars of
   the root path's md5), home to every artifact for THIS plan: ledger,
@@ -188,11 +189,12 @@ in the workspace and read its tail; read a brief, not the whole plan.
 
 ### 1. Take the task
 
-- Run `bash skills/executing-plans/scripts/task-start PLAN_FILE N`. It
-  prints the brief path and BASE (the commit the task's range is cut
-  from) in one call. Read the brief for every task, including ones you
-  remember from setup: what you remember is a summary, the brief has
-  the exact values, signatures, and test cases.
+- Run this skill's `scripts/task-start PLAN_FILE N` by its absolute path,
+  from the working tree you're executing in. It prints the brief
+  path and BASE (the commit the task's range is cut from) in one call.
+  Read the brief for every task, including ones you remember from setup:
+  what you remember is a summary, the brief has the exact values,
+  signatures, and test cases.
 - Mark the task's todo in_progress.
 
 Every tool call is a turn that re-reads your whole context. Bookkeeping
@@ -240,8 +242,8 @@ the claim. If any item is missing, the task is not complete: finish it.
 
 ### 4. Complete the task
 
-Run `bash skills/executing-plans/scripts/task-done PLAN_FILE N BASE -- <test command>`
-with the test command the brief names for the whole task. It runs the
+Run this skill's `scripts/task-done PLAN_FILE N BASE -- <test command>`
+by its absolute path, from the working tree you're executing in, with the test command the brief names for the whole task. It runs the
 tests, keeps the full output in the workspace, prints the tail, and — only
 if they pass — appends the completion line to the ledger:
 
@@ -256,9 +258,9 @@ Completed is not verified. You just implemented this task, which makes
 you the worst reviewer of it — every task gets independent eyes before
 the next one starts.
 
-Build the review package with the range task-start gave you:
-`bash skills/subagent-driven-development/scripts/review-package PLAN_FILE BASE HEAD`
-(BASE is the commit task-start printed for this task — never `HEAD~1`,
+Build the review package with the range task-start gave you: run
+`../subagent-driven-development/scripts/review-package PLAN_FILE BASE HEAD`
+by its absolute path, from the working tree you're executing in (BASE is the commit task-start printed for this task — never `HEAD~1`,
 which silently drops all but the last commit of a multi-commit task).
 
 **With a subagent tool:** dispatch a fresh reviewer subagent using

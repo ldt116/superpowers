@@ -52,7 +52,7 @@ digraph when_to_use {
 
 **vs. Executing Plans (inline):**
 - Fresh subagent per task (no context pollution) instead of one context doing every task
-- Independent reviewer subagent after each task instead of a self-review in the same context that wrote the code
+- Independent reviewer subagent after each task, not a self-review by the context that wrote the code
 - Costs a fresh context per task and per review; inline costs one context plus a review pass per task
 - Both run in this session, share the same plan workspace and ledger, and never pause between tasks
 
@@ -111,13 +111,13 @@ sequences — the single most expensive failure observed. Track progress in
 a ledger file, not only in todos.
 
 - Each plan owns a workspace: at skill start, run this skill's
-  `bash scripts/sdd-workspace PLAN_FILE` — it prints the plan's scratch
+  `bash scripts/sdd-workspace PLAN_FILE` by its absolute path, from the
+  working tree you're executing in — it prints the plan's scratch
   directory (under `/tmp/superpowers/<project-id>/sdd/`), home to
   every artifact for THIS plan: ledger, briefs, reports, review packages.
   Another plan's directory is never yours to read or write.
-- Workspace artifacts are machine-internal: briefs, reports, packages, and
-  ledger exist for this run's subagents, and nobody reads them after the
-  run. Never post them anywhere.
+- Workspace artifacts are machine-internal: they exist for this run's
+  subagents, and nobody reads them after the run. Never post them anywhere.
 - Check for this plan's ledger at `<workspace>/progress.md`. If one exists,
   read [references/resuming.md](references/resuming.md) before anything
   else: it says whose ledger it is and where to resume.
@@ -201,7 +201,8 @@ Record BASE (`git rev-parse HEAD`) before dispatching — the review package
 and fix-round diffs need it.
 
 - **Task brief:** before dispatching an implementer, run this skill's
-  `bash scripts/task-brief PLAN_FILE N` — it extracts the task's full text to a
+  `bash scripts/task-brief PLAN_FILE N` by its absolute path, from the
+  working tree you're executing in — it extracts the task's full text to a
   uniquely named file and prints the path. Compose the dispatch so the
   brief stays the single source of
   requirements. Your dispatch should contain: (1) one line on where this
@@ -217,9 +218,9 @@ and fix-round diffs need it.
   the dispatch prompt. The implementer writes the full report there and
   returns only status, commits, a one-line test summary, and concerns.
 - A hand-composed dispatch carries the template's return contract verbatim
-  — under 15 lines back, detail in the report file. In a real session,
-  hand-written dispatches that dropped it got full dumps back, and every
-  dump stayed resident in the controller's context for the rest of the run.
+  — under 15 lines back, detail in the report file. Dispatches
+  without it got full dumps back, resident in context for the rest of
+  the run.
 - A dispatch prompt describes one task, not the session's history. Do not
   paste accumulated prior-task summaries ("state after Tasks 1-3") into
   later dispatches — a real session's dispatch hit 42k chars of which 99%
@@ -243,7 +244,7 @@ Template: [implementer-prompt.md](implementer-prompt.md)
 
 Implementer subagents report one of four statuses. Handle each appropriately:
 
-**DONE:** Generate the review package (`bash scripts/review-package PLAN_FILE BASE HEAD`, from this skill's directory — it prints the unique file path it wrote; BASE is the commit you recorded before dispatching the implementer — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task), then dispatch the task reviewer with the printed path.
+**DONE:** Generate the review package (`bash scripts/review-package PLAN_FILE BASE HEAD` by its absolute path, from the working tree you're executing in — it prints the unique file path it wrote; BASE is the commit you recorded before dispatching the implementer — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task), then dispatch the task reviewer with the printed path.
 
 **Any other status** (DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED): read
 [references/handling-reports.md](references/handling-reports.md) and follow
@@ -262,7 +263,8 @@ required. Implementer self-review never replaces the task review; both are
 needed.
 
 - Hand the reviewer its diff as a file: run this skill's
-  `bash scripts/review-package PLAN_FILE BASE HEAD` and pass the reviewer the file path
+  `bash scripts/review-package PLAN_FILE BASE HEAD` by its absolute path, from
+  the working tree you're executing in, and pass the reviewer the file path
   it prints (or, without bash: `git log --oneline`, `git diff --stat`,
   and `git diff -U10` for the range, redirected to one uniquely named
   file). The output never enters your own context, and the reviewer sees
