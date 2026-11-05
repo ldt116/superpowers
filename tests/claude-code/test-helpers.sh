@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Helper functions for Claude Code skill tests
 
+SUPERPOWERS_REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
 # Run Claude Code with a prompt and capture output
 # Usage: run_claude "prompt text" [timeout_seconds] [allowed_tools]
 run_claude() {
@@ -144,21 +146,16 @@ create_test_project() {
 # Usage: cleanup_test_project "$test_dir"
 cleanup_test_project() {
     local test_dir="$1"
+    local scratch=""
+    # Plans created by create_test_plan live in the project's scratch dir;
+    # resolve it before the project directory goes away.
     if [ -d "$test_dir" ]; then
+        scratch=$(bash "$SUPERPOWERS_REPO_ROOT/skills/using-superpowers/scripts/scratch-dir" -C "$test_dir" 2>/dev/null) || scratch=""
         rm -rf "$test_dir"
     fi
-    # Plans created by create_test_plan live under /tmp/superpowers/<id>/
-    rm -rf "/tmp/superpowers/$(test_project_id "$test_dir")"
-}
-
-# Project id used by the /tmp/superpowers/<id>/ scratch scheme
-# (basename + first 6 hex chars of the md5 of the physical path)
-# Usage: id=$(test_project_id "$project_dir")
-test_project_id() {
-    local resolved
-    resolved=$(cd "$1" 2>/dev/null && pwd -P) || resolved="$1"
-    printf '%s-%s\n' "$(basename "$resolved")" \
-        "$(printf %s "$resolved" | md5sum | cut -c1-6)"
+    if [ -n "$scratch" ]; then
+        rm -rf "$scratch"
+    fi
 }
 
 # Create a simple plan file for testing
@@ -167,7 +164,7 @@ create_test_plan() {
     local project_dir="$1"
     local plan_name="${2:-test-plan}"
     local plan_file
-    plan_file="/tmp/superpowers/$(test_project_id "$project_dir")/plans/$plan_name.md"
+    plan_file="$(bash "$SUPERPOWERS_REPO_ROOT/skills/using-superpowers/scripts/scratch-dir" -C "$project_dir")/plans/$plan_name.md"
 
     mkdir -p "$(dirname "$plan_file")"
 
@@ -223,5 +220,4 @@ export -f assert_count
 export -f assert_order
 export -f create_test_project
 export -f cleanup_test_project
-export -f test_project_id
 export -f create_test_plan

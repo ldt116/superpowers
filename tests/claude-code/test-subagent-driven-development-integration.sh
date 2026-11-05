@@ -37,7 +37,7 @@ TEST_PROJECT=$(create_test_project)
 echo "Test project: $TEST_PROJECT"
 
 # Trap to cleanup
-trap 'cleanup_test_project "$TEST_PROJECT"; rm -rf "/tmp/superpowers/$PROJECT_ID"' EXIT
+trap 'cleanup_test_project "$TEST_PROJECT"' EXIT
 
 # Set up minimal Node.js project
 cd "$TEST_PROJECT"
@@ -53,12 +53,9 @@ cat > package.json <<'EOF'
 }
 EOF
 
-# Plans live outside the repo under /tmp/superpowers/<project-id>/plans/
-# (writing-plans default). Resolve the physical path the way git's
-# --show-toplevel would so the id matches what sdd-workspace computes.
-TEST_PROJECT_RESOLVED=$(cd "$TEST_PROJECT" && pwd -P)
-PROJECT_ID="$(basename "$TEST_PROJECT_RESOLVED")-$(printf %s "$TEST_PROJECT_RESOLVED" | md5sum | cut -c1-6)"
-PLAN_FILE="/tmp/superpowers/$PROJECT_ID/plans/implementation-plan.md"
+# Plans live outside the repo in the project's scratch dir (writing-plans
+# default); cleanup_test_project removes it with the project.
+PLAN_FILE="$(bash "$SUPERPOWERS_REPO_ROOT/skills/using-superpowers/scripts/scratch-dir" -C "$TEST_PROJECT")/plans/implementation-plan.md"
 
 mkdir -p src test "$(dirname "$PLAN_FILE")"
 
