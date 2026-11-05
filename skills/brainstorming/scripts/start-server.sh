@@ -115,6 +115,13 @@ umask 077
 SESSION_ID="$$-$(date +%s)"
 
 if [[ -n "$PROJECT_DIR" ]]; then
+  # Make the project dir absolute now: the script cds into its own directory
+  # before starting the server, which would re-root a relative path there.
+  # mkdir -p keeps the existing behavior of creating a missing project dir.
+  if ! PROJECT_DIR="$(mkdir -p -- "$PROJECT_DIR" && CDPATH='' cd -- "$PROJECT_DIR" && pwd)"; then
+    echo "{\"error\": \"Cannot create or enter --project-dir\"}"
+    exit 1
+  fi
   # Scratch lives outside the repo under /tmp/superpowers/<project-id>/,
   # keyed like SDD workspaces (path basename + first 6 hex chars of the
   # path's md5), so the repo never carries untracked brainstorm files.

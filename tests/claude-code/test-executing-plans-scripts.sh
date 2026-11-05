@@ -28,6 +28,15 @@ cleanup() {
     fi
 }
 
+path_id() {
+    # sdd-workspace's id for a directory: basename + first 6 hex chars of the
+    # physical path's md5. A workspace written for it would land under it.
+    local resolved
+    resolved="$(cd "$1" && pwd -P)"
+    printf '%s-%s\n' "$(basename "$resolved")" \
+        "$(printf %s "$resolved" | md5sum | cut -c1-6)"
+}
+
 main() {
     echo "=== Test: executing-plans scripts ==="
 
@@ -37,8 +46,9 @@ main() {
     git init -q -b main "$TEST_ROOT/repo"
     local repo
     repo="$(cd "$TEST_ROOT/repo" && git rev-parse --show-toplevel)"
-    # Same spelling as the scripts print (pwd), not rev-parse's C:/... on Git Bash.
-    repo="$(cd "$repo" && pwd)"
+    # Same spelling as the scripts print: C:/... from cygpath -m on Windows,
+    # plain pwd elsewhere.
+    repo="$(cd "$repo" && if command -v cygpath >/dev/null 2>&1; then cygpath -m "$PWD"; else pwd; fi)"
     local git_id=(-c user.email=t@example.com -c user.name=t -c commit.gpgsign=false)
 
     cat > "$repo/plan.md" <<'PLAN'
@@ -162,6 +172,81 @@ PLAN
         fail "task-done records a passing task that printed no output"
         echo "    expected: $expected2"
         echo "    ledger:"; sed 's/^/      /' "$ledger" 2>/dev/null || echo "      (missing)"
+    fi
+
+    # --- no usable repository: every helper stops with one message (#2242, #2429) ---
+    # The same message for a new project and for a caller standing in the
+    # wrong directory (such as the plugin's skill directory, where git init
+    # is the wrong fix), so "init and commit" is only the new-project case.
+    git init -q -b main "$TEST_ROOT/unborn"
+    cp "$repo/plan.md" "$TEST_ROOT/unborn/plan.md"
+    mkdir -p "$TEST_ROOT/no-repo"
+    cp "$repo/plan.md" "$TEST_ROOT/no-repo/plan.md"
+    # git's own first error line follows the shared message, so the reason
+    # git refused is never hidden.
+    local where msg said
+    for where in unborn no-repo; do
+        msg="SDD scripts must run from inside the git working tree you're executing in, with at least one commit (current directory: $TEST_ROOT/$where). If this is a new project, run 'git init' and make a first commit, then rerun."
+        said="git said: fatal: "
+        [[ "$where" == no-repo ]] && said="git said: fatal: not a git repository"
+        rc=0
+        out="$(cd "$TEST_ROOT/$where" && "$EP_SCRIPTS/task-start" plan.md 1 2>&1)" || rc=$?
+        if [[ "$rc" -eq 2 && "$out" == "$msg"$'\n'"$said"* ]]; then
+            pass "task-start in a $where directory exits 2 with the shared message"
+        else
+            fail "task-start in a $where directory exits 2 with the shared message"
+            echo "    exit: $rc"
+            echo "    got: $out"
+        fi
+        rc=0
+        out="$(cd "$TEST_ROOT/$where" && "$EP_SCRIPTS/task-done" plan.md 1 HEAD -- true 2>&1)" || rc=$?
+        if [[ "$rc" -eq 2 && "$out" == "$msg"$'\n'"$said"* ]]; then
+            pass "task-done in a $where directory exits 2 with the shared message"
+        else
+            fail "task-done in a $where directory exits 2 with the shared message"
+            echo "    exit: $rc"
+            echo "    got: $out"
+        fi
+    done
+    # Neither in the directory (upstream's layout) nor under /tmp (the fork's).
+    if [[ ! -e "$TEST_ROOT/unborn/.superpowers" && ! -e "$TEST_ROOT/no-repo/.superpowers" \
+        && ! -e "/tmp/superpowers/$(path_id "$TEST_ROOT/unborn")" \
+        && ! -e "/tmp/superpowers/$(path_id "$TEST_ROOT/no-repo")" ]]; then
+        pass "nothing is written without a usable repository"
+    else
+        fail "nothing is written without a usable repository"
+    fi
+
+    # --- outside any repository, a plan in a repository is not a fallback (#2429) ---
+    # Like git, the scripts act on the current directory's working tree; an
+    # absolute plan path into some repository does not pick that one instead.
+    msg="SDD scripts must run from inside the git working tree you're executing in, with at least one commit (current directory: $TEST_ROOT/no-repo). If this is a new project, run 'git init' and make a first commit, then rerun."
+    local before head_now
+    head_now="$(cd "$repo" && git rev-parse HEAD)"
+    before="$(find "$WORKSPACE" | sort; cat "$WORKSPACE/progress.md")"
+    rc=0
+    out="$(cd "$TEST_ROOT/no-repo" && "$EP_SCRIPTS/task-start" "$repo/plan.md" 2 2>&1)" || rc=$?
+    if [[ "$rc" -eq 2 && "$out" == "$msg"$'\n'"git said: fatal: not a git repository"* ]]; then
+        pass "task-start outside any repository stops with the shared message despite a plan in a repository"
+    else
+        fail "task-start outside any repository stops with the shared message despite a plan in a repository"
+        echo "    exit: $rc"
+        echo "    got: $out"
+    fi
+    rc=0
+    out="$(cd "$TEST_ROOT/no-repo" && "$EP_SCRIPTS/task-done" "$repo/plan.md" 2 "$head_now" -- true 2>&1)" || rc=$?
+    if [[ "$rc" -eq 2 && "$out" == "$msg"$'\n'"git said: fatal: not a git repository"* ]]; then
+        pass "task-done outside any repository stops with the shared message despite a plan in a repository"
+    else
+        fail "task-done outside any repository stops with the shared message despite a plan in a repository"
+        echo "    exit: $rc"
+        echo "    got: $out"
+    fi
+    if [[ "$(find "$WORKSPACE" | sort; cat "$WORKSPACE/progress.md")" == "$before" && ! -e "$TEST_ROOT/no-repo/.superpowers" \
+        && ! -e "/tmp/superpowers/$(path_id "$TEST_ROOT/no-repo")" ]]; then
+        pass "outside any repository, task-start and task-done write nothing to the plan's repository"
+    else
+        fail "outside any repository, task-start and task-done write nothing to the plan's repository"
     fi
 
     echo
