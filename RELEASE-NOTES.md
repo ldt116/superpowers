@@ -1,5 +1,60 @@
 # Superpowers Release Notes
 
+## v7.0.2.2 (2026-11-05)
+
+Skill artifacts move from the shared `/tmp/superpowers/<project-id>/` to a
+per-user root, `/tmp/superpowers-<uid>/<project-id>/`. All declared version
+fields bumped to `7.0.2.2`.
+
+### Per-user scratch root
+
+- **Why.** One shared `/tmp/superpowers` is a lockout and a tamper risk:
+  whichever user creates it first owns it, every other user's skills then
+  fail to write, and the creator can pre-plant a `<project-id>/` directory
+  to read or rewrite another user's ledger and task briefs.
+- **New helper `skills/using-superpowers/scripts/scratch-dir`** prints
+  `<root>/<project-id>` (`-C DIR` runs as if started in DIR, `--root` prints
+  the root). The root is created mode 700; one that already exists must be a
+  real directory, not a symlink, owned by you, and mode exactly 700 —
+  otherwise the helper exits 2 with a one-line fix and never chmods,
+  chowns, or deletes a path it did not create. The mode check is skipped on
+  MSYS/MINGW/CYGWIN, where `noacl` mounts fake mode bits.
+  A relative `SUPERPOWERS_SCRATCH_ROOT` is refused (exit 2) so artifacts
+  can't land inside the repo, `-C` ignores `CDPATH`, and the owner check
+  now has a test.
+- **Everything resolves through it.** `sdd-workspace`, the brainstorm
+  server, and the `writing-plans`, `brainstorming`,
+  `subagent-driven-development`, `executing-plans`, and
+  `multi-dimension-review` prose all take the location from the helper, run
+  by its absolute path. A brainstorm session with no project lives at
+  `<root>/brainstorm-<id>` and is deleted on stop only under a
+  `superpowers-*` parent. Divergence #5 in CLAUDE.md and the README fork
+  section are updated to match; #7's artifact path follows.
+- **Migration.** When `<root>/<project-id>` does not exist and the legacy
+  `/tmp/superpowers/<project-id>` is a real directory you own inside a legacy
+  root you own, it is moved over and a symlink is left at the old
+  path, so a session still running an older plugin keeps resolving it.
+  Anything else in the legacy root is left alone and the new directory
+  starts fresh.
+- **`$TMPDIR` is deliberately not used.** It can differ per session or
+  sandbox, which would break plan handoff to a fresh session that has to
+  find the plan file by path.
+
+### Tests
+
+- New `tests/scratch-dir/test-scratch-dir.sh`; the brainstorm-server,
+  `sdd-workspace`, `executing-plans` script, and sdd-helper-paths tests
+  cover the new root.
+- **Test-leak fix.** The tests that ran against the real `/tmp` (the
+  Windows lifecycle test, the SDD integration test and its helpers) now
+  resolve their directories through the helper or a temporary root and
+  clean up after themselves, so a run leaves nothing under the real
+  `/tmp/superpowers*`.
+
+### Divergences
+
+- All eight fork divergences are preserved; #5 changes its root as above.
+
 ## v7.0.2.1 (2026-11-05)
 
 Upstream v7.0.2 merged. All declared version fields bumped to `7.0.2.1`.

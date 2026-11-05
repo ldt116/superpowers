@@ -13,10 +13,10 @@ Write implementation plans for an engineer who has not seen this codebase or thi
 
 **Context:** If working in an isolated worktree, it should have been created via the `superpowers:using-git-worktrees` skill at execution time.
 
-**Save plans to:** `/tmp/superpowers/<project-id>/plans/YYYY-MM-DD-<feature-name>.md`
-— a file only: never inside the repo, never posted to a tracker. `<project-id>`
-is the repo root's basename plus the first 6 hex chars of the root path's
-md5 (e.g. `superpowers-3f9c2e`).
+**Save plans to:** `<scratch>/plans/YYYY-MM-DD-<feature-name>.md` — a file
+only: never inside the repo, never posted to a tracker. `<scratch>` is what
+`../using-superpowers/scripts/scratch-dir` prints, run by its absolute path
+from the working tree you're executing in.
 - (User preferences for plan location override this default)
 
 ## Scope Check

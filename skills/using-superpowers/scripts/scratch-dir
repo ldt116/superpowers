@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# Ensure and print the per-user scratch directory skill artifacts live in:
+# <root>/<project-id>, where root is /tmp/superpowers-<uid> and project-id is
+# the project root's basename plus the first 6 hex chars of the md5 of its
+# physical path. Project root = the git toplevel when inside a work tree,
+# else the directory itself (brainstorming may run outside a repo).
+#
+# The root is per user because a single shared /tmp/superpowers locks every
+# other user out (the first creator wins) and lets whoever creates it first
+# pre-plant <project-id>/ to tamper with another user's ledger. The root is
+# created mode 700; one that already exists must be a real directory (not a
+# symlink), owned by you, mode exactly 700 — otherwise this exits 2 and says
+# how to fix it. It never chmods, chowns, or deletes a path it did not
+# create. $TMPDIR is deliberately not consulted: it can differ per session
+# or sandbox, which would break plan handoff to a fresh session.
+#
+# Migration: when <root>/<project-id> does not exist and the legacy
+# /tmp/superpowers/<project-id> is a real directory owned by you (inside a
+# real directory owned by you), it is moved here and a symlink is left at the
+# old path so a session still running an older plugin keeps resolving it.
+# Anything else in the legacy root is left alone and the new dir starts fresh.
+#
+# Test hooks: SUPERPOWERS_SCRATCH_ROOT replaces the root (absolute only);
+# SUPERPOWERS_LEGACY_SCRATCH_ROOT replaces the legacy root /tmp/superpowers.
+#
+# -C DIR runs as if started in DIR, the way git -C does.
+#
+# Usage: scratch-dir [-C DIR] [--root]
+set -euo pipefail
+
+want_root=false
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -C)
+      [ -d "${2:-}" ] || { echo "bad -C directory: ${2:-}" >&2; exit 2; }
+      CDPATH='' cd -- "$2"
+      shift 2
+      ;;
+    --root)
+      want_root=true
+      shift
+      ;;
+    *)
+      echo "usage: scratch-dir [-C DIR] [--root]" >&2
+      exit 2
+      ;;
+  esac
+done
+
+root=${SUPERPOWERS_SCRATCH_ROOT:-/tmp/superpowers-$(id -u)}
+legacy=${SUPERPOWERS_LEGACY_SCRATCH_ROOT:-/tmp/superpowers}
+
+refuse() {
+  echo "scratch root $root $1" >&2
+  exit 2
+}
+
+# A relative root would land artifacts under whatever directory the caller is
+# in, possibly inside the repo. Windows drive paths (C:/...) are absolute too.
+case "$root" in
+  /*|[A-Za-z]:[/\\]*) ;;
+  *) refuse "is not an absolute path (set SUPERPOWERS_SCRATCH_ROOT to one)" ;;
+esac
+
+umask 077
+if [ ! -e "$root" ] && [ ! -L "$root" ]; then
+  # A lost race (another first run created it) falls through to the check.
+  mkdir -m 700 "$root" 2>/dev/null || true
+fi
+[ ! -L "$root" ] || refuse "is a symlink (remove it, or set SUPERPOWERS_SCRATCH_ROOT)"
+[ -d "$root" ] || refuse "is not a directory (remove it, or set SUPERPOWERS_SCRATCH_ROOT)"
+[ -O "$root" ] || refuse "is not owned by you (remove it, or set SUPERPOWERS_SCRATCH_ROOT)"
+# Git Bash/MSYS2/Cygwin mount /tmp noacl, so mode bits are faked (directories
+# read back 755) and the check would refuse every call; /tmp there is the
+# per-user %TEMP%. Skip only this check: symlink, directory, owner still run.
+case "$(uname -s)" in
+  MSYS*|MINGW*|CYGWIN*) ;;
+  *) find "$root" -maxdepth 0 -perm 0700 | grep -q . \
+       || refuse "must be mode 700 (chmod 700 it)" ;;
+esac
+
+if $want_root; then
+  out=$root
+else
+  if toplevel=$(git rev-parse --show-toplevel 2>/dev/null); then
+    project=$(CDPATH='' cd -- "$toplevel" && pwd -P)
+  else
+    project=$(pwd -P)
+  fi
+  id="$(basename "$project")-$(printf %s "$project" | md5sum | cut -c1-6)"
+  out="$root/$id"
+
+  if [ ! -e "$out" ] && [ ! -L "$out" ] \
+    && [ -d "$legacy" ] && [ ! -L "$legacy" ] && [ -O "$legacy" ] \
+    && [ -d "$legacy/$id" ] && [ ! -L "$legacy/$id" ] && [ -O "$legacy/$id" ]; then
+    if mv "$legacy/$id" "$out"; then
+      ln -s "$out" "$legacy/$id" \
+        || echo "scratch-dir: moved $legacy/$id to $out but could not leave a symlink behind" >&2
+    else
+      echo "scratch-dir: could not move $legacy/$id to $out; starting a fresh directory" >&2
+    fi
+  fi
+  mkdir -p "$out"
+fi
+
+# On Windows (Git Bash, MSYS2, Cygwin) print C:/Users/... rather than
+# /c/Users/... or /tmp/...: the caller may be PowerShell or another native
+# tool, which can't resolve MSYS paths, and bash accepts this form too.
+if command -v cygpath >/dev/null 2>&1; then cygpath -m "$out"; else printf '%s\n' "$out"; fi

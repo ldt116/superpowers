@@ -10,13 +10,22 @@ TEST_DIR="${TMPDIR:-/tmp}/brainstorm-start-test-$$"
 passed=0
 failed=0
 
+# Sessions land under the per-user scratch root; point it (and the legacy
+# root) into the test dir so nothing is written under the real /tmp/superpowers*.
+export SUPERPOWERS_SCRATCH_ROOT="$TEST_DIR/scratch"
+export SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_DIR/legacy"
+
 cleanup() {
   rm -rf "$TEST_DIR"
-  local id
-  id="project-$(printf %s "$TEST_DIR/project" | md5sum | cut -c1-6)"
-  rm -rf "/tmp/superpowers/$id"
 }
 trap cleanup EXIT
+
+# <scratch-dir> for a project dir: root / basename-md5(physical path)[:6].
+project_scratch() {
+  local phys
+  phys="$(cd "$1" && pwd -P)"
+  echo "$SUPERPOWERS_SCRATCH_ROOT/$(basename "$phys")-$(printf %s "$phys" | md5sum | cut -c1-6)"
+}
 
 pass() {
   echo "  PASS: $1"
@@ -77,7 +86,7 @@ else
        "expected exact --brainstorm-server-id=<safe id> argv line, got: $captured"
 fi
 
-server_id_file=$(find "/tmp/superpowers/project-$(printf %s "$TEST_DIR/project" | md5sum | cut -c1-6)/brainstorm" -name server-instance-id -print 2>/dev/null | head -1)
+server_id_file=$(find "$(project_scratch "$TEST_DIR/project")/brainstorm" -name server-instance-id -print 2>/dev/null | head -1)
 server_id_value=""
 if [[ -n "$server_id_file" ]]; then
   server_id_value="$(tr -d '\r\n' < "$server_id_file")"
@@ -89,7 +98,7 @@ else
        "expected valid id in state, got '$server_id_value'"
 fi
 
-rm -rf "/tmp/superpowers/project-$(printf %s "$TEST_DIR/project" | md5sum | cut -c1-6)"
+rm -rf "$(project_scratch "$TEST_DIR/project")"
 
 cat > "$TEST_DIR/fake-bin/node" <<'EOF'
 #!/usr/bin/env bash
@@ -128,13 +137,13 @@ for relative_dir in "." "new project dir"; do
   caller_dir="$TEST_DIR/caller with space"
   rm -rf "$caller_dir"
   mkdir -p "$caller_dir"
-  expected_root="$(cd "$caller_dir" && pwd)"
+  expected_root="$(cd "$caller_dir" && pwd -P)"
   if [[ "$relative_dir" != "." ]]; then
     expected_root="$expected_root/$relative_dir"
   fi
-  # Fork layout: session dirs live under /tmp/superpowers/<project-id>/,
-  # keyed by the absolute project dir, never inside the project.
-  expected_scratch="/tmp/superpowers/$(basename "$expected_root")-$(printf %s "$expected_root" | md5sum | cut -c1-6)"
+  # Fork layout: session dirs live under <scratch-root>/<project-id>/,
+  # keyed by the physical project dir, never inside the project.
+  expected_scratch="$SUPERPOWERS_SCRATCH_ROOT/$(basename "$expected_root")-$(printf %s "$expected_root" | md5sum | cut -c1-6)"
 
   captured=$(
     cd "$caller_dir" &&
@@ -165,6 +174,46 @@ for relative_dir in "." "new project dir"; do
          "no server.pid under '$brainstorm_dir/state', output: $captured"
   fi
   rm -rf "$expected_scratch"
+done
+
+echo ""
+echo "--- start-server.sh scratch root ---"
+
+# The fake MINGW uname would make the helper skip its mode-700 check.
+rm -f "$TEST_DIR/fake-bin/uname"
+
+# No --project-dir: the session is brainstorm-<id> directly under the root.
+captured=$(
+  cd "$TEST_DIR/project" &&
+    PATH="$TEST_DIR/fake-bin:$PATH" MSYSTEM="" \
+      bash "$START_SCRIPT" --foreground 2>&1 || true
+)
+brainstorm_dir=$(echo "$captured" | grep "CAPTURED_BRAINSTORM_DIR=" | head -1 | sed 's/CAPTURED_BRAINSTORM_DIR=//')
+case "$brainstorm_dir" in
+  "$SUPERPOWERS_SCRATCH_ROOT/brainstorm-"*)
+    pass "no --project-dir puts the session at <root>/brainstorm-<id>" ;;
+  *)
+    fail "no --project-dir puts the session at <root>/brainstorm-<id>" \
+         "expected prefix '$SUPERPOWERS_SCRATCH_ROOT/brainstorm-', got: $captured" ;;
+esac
+
+# An unsafe root (group/other-accessible) makes the helper fail: start-server
+# reports it as JSON, exits 1, and starts nothing.
+unsafe_root="$TEST_DIR/unsafe-root"
+mkdir -p "$unsafe_root" && chmod 755 "$unsafe_root"
+for args in "--project-dir $TEST_DIR/project" ""; do
+  # shellcheck disable=SC2086
+  out=$(
+    PATH="$TEST_DIR/fake-bin:$PATH" MSYSTEM="" SUPERPOWERS_SCRATCH_ROOT="$unsafe_root" \
+      bash "$START_SCRIPT" $args --foreground 2>/dev/null
+  )
+  status=$?
+  if [[ $status -eq 1 && "$out" == '{"error": "'*'"}' && "$out" != *CAPTURED_* ]]; then
+    pass "unsafe scratch root -> JSON error and exit 1 (${args:-no project dir})"
+  else
+    fail "unsafe scratch root -> JSON error and exit 1 (${args:-no project dir})" \
+         "status=$status out=$out"
+  fi
 done
 
 echo ""

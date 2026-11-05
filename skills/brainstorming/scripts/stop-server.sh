@@ -3,8 +3,9 @@
 # Usage: stop-server.sh <session_dir>
 #
 # Kills the server process. Only deletes the session directory when it is
-# the no-project /tmp fallback (ephemeral); project sessions under
-# /tmp/superpowers/<project>/brainstorm/ are kept so mockups can be
+# a no-project session (ephemeral): brainstorm-<id> directly under a
+# superpowers-* scratch root, or the legacy /tmp/brainstorm-<id>. Project
+# sessions under <scratch-dir>/brainstorm/ are kept so mockups can be
 # reviewed later.
 
 SESSION_DIR="$1"
@@ -110,8 +111,11 @@ if [[ -f "$PID_FILE" ]]; then
   rm -f "$PID_FILE" "$SERVER_ID_FILE" "${STATE_DIR}/server.log"
   mark_stopped "stop-server.sh"
 
-  # Only delete the ephemeral no-project fallback sessions
-  if [[ "$SESSION_DIR" == /tmp/brainstorm-* ]]; then
+  # Only delete the ephemeral no-project sessions
+  session_base="$(basename "$SESSION_DIR")"
+  parent_base="$(basename "$(dirname "$SESSION_DIR")")"
+  if [[ "$session_base" == brainstorm-* && "$parent_base" == superpowers-* ]] ||
+     [[ "$SESSION_DIR" == /tmp/brainstorm-* ]]; then
     rm -rf "$SESSION_DIR"
   fi
 

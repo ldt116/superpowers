@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Tests for the SDD workspace: scripts/sdd-workspace resolves a PER-PLAN
-# scratch directory under /tmp/superpowers/<project-id>/sdd/ — outside the
-# repository, owner-only — and the SDD scripts write into their plan's
-# directory.
+# scratch directory under <scratch-root>/<project-id>/sdd/ (the per-user
+# scratch root) — outside the repository, owner-only — and the SDD scripts
+# write into their plan's directory.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -11,7 +11,6 @@ SDD_SCRIPTS="$REPO_ROOT/skills/subagent-driven-development/scripts"
 
 FAILURES=0
 TEST_ROOT=""
-CLEANUP_DIRS=()
 
 pass() { echo "  [PASS] $1"; }
 fail() {
@@ -42,11 +41,6 @@ cleanup() {
     if [[ -n "$TEST_ROOT" && -d "$TEST_ROOT" ]]; then
         rm -rf "$TEST_ROOT"
     fi
-    # Workspaces live in /tmp and would survive the test; remove what it made.
-    local d
-    for d in "${CLEANUP_DIRS[@]}"; do
-        rm -rf "$d"
-    done
 }
 
 project_id() {
@@ -74,6 +68,9 @@ main() {
 
     TEST_ROOT="$(mktemp -d)"
     trap cleanup EXIT
+    # Workspaces land under the test's own temp dir, never the real /tmp.
+    export SUPERPOWERS_SCRATCH_ROOT="$TEST_ROOT/scratch"
+    export SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_ROOT/legacy"
 
     git init -q -b main "$TEST_ROOT/repo"
     local repo
@@ -81,8 +78,7 @@ main() {
     repo="$(physical_path "$repo")"
     local repo_id base
     repo_id="$(project_id "$repo")"
-    base="/tmp/superpowers/$repo_id/sdd"
-    CLEANUP_DIRS+=("/tmp/superpowers/$repo_id")
+    base="$SUPERPOWERS_SCRATCH_ROOT/$repo_id/sdd"
 
     cat > "$repo/plan-a.md" <<'PLAN'
 # Plan A
@@ -124,9 +120,9 @@ PLAN
     dir_b="$(cd "$repo" && "$SDD_SCRIPTS/sdd-workspace" plan-b.md)"
 
     if [[ "$dir_a" == "$base/plan-a" ]]; then
-        pass "prints /tmp/superpowers/<project-id>/sdd/<plan-basename>"
+        pass "prints <scratch-root>/<project-id>/sdd/<plan-basename>"
     else
-        fail "prints /tmp/superpowers/<project-id>/sdd/<plan-basename>"
+        fail "prints <scratch-root>/<project-id>/sdd/<plan-basename>"
         echo "    got: $dir_a"
         echo "    want: $base/plan-a"
     fi
@@ -522,8 +518,7 @@ PLAN
     ( cd "$repo" && git worktree add -q "$wt" -b wt-feature )
     local wt_id wt_dir wt_ws
     wt_id="$(project_id "$wt")"
-    wt_ws="/tmp/superpowers/$wt_id/sdd"
-    CLEANUP_DIRS+=("/tmp/superpowers/$wt_id")
+    wt_ws="$SUPERPOWERS_SCRATCH_ROOT/$wt_id/sdd"
     wt_dir="$(cd "$wt" && "$SDD_SCRIPTS/sdd-workspace" plan-a.md)"
     if [[ "$wt_dir" == "$wt_ws/plan-a" && "$wt_dir" != "$dir_a" ]]; then
         pass "linked worktree resolves its own distinct workspace"
@@ -632,7 +627,7 @@ PLAN
             echo "    stderr: $nr_err"
         fi
     done
-    if [[ ! -e "$nonrepo/.superpowers" && ! -e "/tmp/superpowers/$(path_id "$nonrepo")" && "$(find "$wt_ws" | sort)" == "$nr_before" ]]; then
+    if [[ ! -e "$nonrepo/.superpowers" && ! -e "$SUPERPOWERS_SCRATCH_ROOT/$(path_id "$nonrepo")" && "$(find "$wt_ws" | sort)" == "$nr_before" ]]; then
         pass "outside any repository, nothing is written to the cwd or the plan's repository"
     else
         fail "outside any repository, nothing is written to the cwd or the plan's repository"
@@ -670,11 +665,11 @@ PLAN
         echo "    exit: $rc"
         echo "    stderr: $gf_err"
     fi
-    if [[ ! -e "$gf/.superpowers" && ! -e "/tmp/superpowers/$(path_id "$gf")" ]]; then
+    if [[ ! -e "$gf/.superpowers" && ! -e "$SUPERPOWERS_SCRATCH_ROOT/$(path_id "$gf")" ]]; then
         pass "nothing is written outside a repository"
     else
         fail "nothing is written outside a repository"
-        find "$gf/.superpowers" "/tmp/superpowers/$(path_id "$gf")" 2>/dev/null | sed 's/^/    /'
+        find "$gf/.superpowers" "$SUPERPOWERS_SCRATCH_ROOT/$(path_id "$gf")" 2>/dev/null | sed 's/^/    /'
     fi
 
     # A repository with no commit yet has no range to review, so
@@ -683,7 +678,7 @@ PLAN
     rc=0
     gf_err="$(cd "$gf" && "$SDD_SCRIPTS/review-package" plan.md HEAD~1 HEAD 2>&1 >/dev/null)" || rc=$?
     if [[ "$rc" -eq 2 && "$gf_err" == "$no_repo_msg"$'\n'"git said: fatal: "* && ! -e "$gf/.superpowers" \
-        && ! -e "/tmp/superpowers/$(path_id "$gf")" ]]; then
+        && ! -e "$SUPERPOWERS_SCRATCH_ROOT/$(path_id "$gf")" ]]; then
         pass "review-package in a repository with no commit exits 2 with the same message"
     else
         fail "review-package in a repository with no commit exits 2 with the same message"
@@ -712,10 +707,14 @@ PLAN
     fi
 
     # --- helpers survive a mode-stripping extractor dropping exec bits (#2040) ---
-    local stripped="$TEST_ROOT/stripped-scripts"
-    mkdir -p "$stripped"
+    # sdd-workspace reaches the scratch-dir helper at ../../using-superpowers/
+    # scripts, so the stripped copy keeps that layout (helper stripped too).
+    local stripped="$TEST_ROOT/stripped-skills/subagent-driven-development/scripts"
+    local stripped_helper="$TEST_ROOT/stripped-skills/using-superpowers/scripts"
+    mkdir -p "$stripped" "$stripped_helper"
     cp "$SDD_SCRIPTS/sdd-repo" "$SDD_SCRIPTS/sdd-workspace" "$SDD_SCRIPTS/task-brief" "$SDD_SCRIPTS/review-package" "$stripped/"
-    chmod -x "$stripped"/*
+    cp "$REPO_ROOT/skills/using-superpowers/scripts/scratch-dir" "$stripped_helper/"
+    chmod -x "$stripped"/* "$stripped_helper"/*
     local noexec_out noexec_rc=0
     noexec_out="$(cd "$repo" && bash "$stripped/task-brief" plan-b.md 1 2>&1)" || noexec_rc=$?
     if [[ "$noexec_rc" -eq 0 && -f "$base/plan-b/task-1-brief.md" ]]; then
@@ -847,6 +846,27 @@ PLAN
         echo "    dir:    $dir_out"
         echo "    marker: $(cat "$dir_out/plan-path" 2>/dev/null)"
     fi
+
+    # --- An unsafe scratch root stops the script: no path, no workspace ---
+    # (the mode-700 check is skipped on Windows shells, where mode bits are fake)
+    case "$(uname -s)" in
+        MSYS*|MINGW*|CYGWIN*) ;;
+        *)
+            local unsafe="$TEST_ROOT/unsafe-scratch" unsafe_out unsafe_err
+            mkdir -p "$unsafe" && chmod 755 "$unsafe"
+            rc=0
+            unsafe_out="$(cd "$repo" && SUPERPOWERS_SCRATCH_ROOT="$unsafe" "$SDD_SCRIPTS/sdd-workspace" plan-a.md 2>"$TEST_ROOT/unsafe.err")" || rc=$?
+            unsafe_err="$(cat "$TEST_ROOT/unsafe.err")"
+            if [[ "$rc" -eq 2 && -z "$unsafe_out" && -n "$unsafe_err" && -z "$(ls -A "$unsafe")" ]]; then
+                pass "sdd-workspace stops with exit 2 when the scratch root is unsafe"
+            else
+                fail "sdd-workspace stops with exit 2 when the scratch root is unsafe"
+                echo "    exit: $rc"
+                echo "    stdout: $unsafe_out"
+                echo "    stderr: $unsafe_err"
+            fi
+            ;;
+    esac
 
     echo ""
     if [[ "$FAILURES" -ne 0 ]]; then
