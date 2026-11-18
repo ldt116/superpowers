@@ -35,7 +35,15 @@ fields bumped to `7.0.2.2`.
   root you own, it is moved over and a symlink is left at the old
   path, so a session still running an older plugin keeps resolving it.
   Anything else in the legacy root is left alone and the new directory
-  starts fresh.
+  starts fresh. A legacy entry swapped between the checks and the move can't
+  become the scratch dir: whatever lands at `<root>/<project-id>` must be a
+  real directory you own, or the helper exits 2. Two first runs racing the
+  move no longer leave the winner's symlink inside the migrated directory.
+- **Follow-up fixes (#24).** `sdd-workspace` exits 2 instead of looping
+  forever when it can't create the workspace directory. A root whose parent
+  is missing is refused with a hint about the parent, not "remove it". The
+  brainstorm `start-server.sh` JSON error escapes control characters and
+  never comes back empty.
 - **`$TMPDIR` is deliberately not used.** It can differ per session or
   sandbox, which would break plan handoff to a fresh session that has to
   find the plan file by path.

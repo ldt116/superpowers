@@ -64,8 +64,9 @@ esac
 
 umask 077
 if [ ! -e "$root" ] && [ ! -L "$root" ]; then
-  # A lost race (another first run created it) falls through to the check.
-  mkdir -m 700 "$root" 2>/dev/null || true
+  # A lost race (another first run created it) falls through to the checks.
+  mkdir -m 700 "$root" 2>/dev/null || [ -e "$root" ] || [ -L "$root" ] \
+    || refuse "could not be created (does its parent directory exist? or set SUPERPOWERS_SCRATCH_ROOT)"
 fi
 [ ! -L "$root" ] || refuse "is a symlink (remove it, or set SUPERPOWERS_SCRATCH_ROOT)"
 [ -d "$root" ] || refuse "is not a directory (remove it, or set SUPERPOWERS_SCRATCH_ROOT)"
@@ -94,13 +95,26 @@ else
     && [ -d "$legacy" ] && [ ! -L "$legacy" ] && [ -O "$legacy" ] \
     && [ -d "$legacy/$id" ] && [ ! -L "$legacy/$id" ] && [ -O "$legacy/$id" ]; then
     if mv "$legacy/$id" "$out"; then
-      ln -s "$out" "$legacy/$id" \
-        || echo "scratch-dir: moved $legacy/$id to $out but could not leave a symlink behind" >&2
+      if [ ! -L "$out" ] && { [ -e "$out/$id" ] || [ -L "$out/$id" ]; }; then
+        # Lost a race: another run migrated first, so $out already existed
+        # and mv put that run's symlink inside it. Put the symlink back.
+        mv "$out/$id" "$legacy/$id" \
+          || echo "scratch-dir: could not move $out/$id back to $legacy/$id" >&2
+      else
+        ln -s "$out" "$legacy/$id" \
+          || echo "scratch-dir: moved $legacy/$id to $out but could not leave a symlink behind" >&2
+      fi
     else
       echo "scratch-dir: could not move $legacy/$id to $out; starting a fresh directory" >&2
     fi
   fi
   mkdir -p "$out"
+  # The legacy entry can change between the checks above and the mv; whatever
+  # was moved in, only a real directory you own may become the scratch dir.
+  if [ -L "$out" ] || [ ! -d "$out" ] || [ ! -O "$out" ]; then
+    echo "scratch dir $out is not a real directory owned by you (remove it)" >&2
+    exit 2
+  fi
 fi
 
 # On Windows (Git Bash, MSYS2, Cygwin) print C:/Users/... rather than

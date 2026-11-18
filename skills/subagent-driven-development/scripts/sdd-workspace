@@ -86,7 +86,9 @@ owns() {
   if [ -e "$1/plan-path" ]; then
     [ "$(cat "$1/plan-path")" = "$plan_id" ]
   else
-    mkdir -p "$1"
+    # Exit rather than return false: the callers below would try the next
+    # name forever, and set -e does not apply inside their conditions.
+    mkdir -p "$1" || exit 2
     printf '%s\n' "$plan_id" > "$1/plan-path"
   fi
 }
