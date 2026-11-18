@@ -350,6 +350,33 @@ EOF
     expect_refusal "refuses a legacy dir swapped for a symlink during migration" \
         "$before" "$(ls -A "$TEST_ROOT/swap-target")" "is not a real directory owned by you"
 
+    # a legacy dir that happens to hold an entry named <id> migrates with it:
+    # only a symlink back to the migrated dir counts as a lost race
+    mkdir -p "$TEST_ROOT/legacy-selfname/$id/$id"
+    echo keep > "$TEST_ROOT/legacy-selfname/$id/$id/k"
+    run_helper selfname -C "$repo"
+    if [[ "$RC" == 0 && -f "$ROOT/$id/$id/k" && -L "$LEGACY/$id" ]]; then
+        pass "a legacy entry named <id> migrates with its dir"
+    else
+        fail "a legacy entry named <id> migrates with its dir (rc=$RC err=$ERR)"
+    fi
+
+    # a symlink planted at the emptied legacy path after the mv: the link
+    # left behind must not be created inside wherever it points
+    mkdir -p "$TEST_ROOT/mvbin-plant" "$TEST_ROOT/plant-target" "$TEST_ROOT/legacy-plant/$id"
+    cat > "$TEST_ROOT/mvbin-plant/mv" <<EOF2
+#!/bin/sh
+"$real_mv" "\$@" || exit
+ln -s "$TEST_ROOT/plant-target" "\$1"
+EOF2
+    chmod +x "$TEST_ROOT/mvbin-plant/mv"
+    RC=0
+    OUT=$(PATH="$TEST_ROOT/mvbin-plant:$PATH" SUPERPOWERS_SCRATCH_ROOT="$TEST_ROOT/root-plant" \
+        SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_ROOT/legacy-plant" \
+        bash "$HELPER" -C "$repo" 2>"$TEST_ROOT/err-plant") || RC=$?
+    expect "the legacy symlink is not created through a planted symlink" \
+        "0 $(spell "$TEST_ROOT/root-plant/$id") " "$RC $OUT $(ls -A "$TEST_ROOT/plant-target")"
+
     # default root is /tmp/superpowers-$(id -u)
     local default_root default_out
     default_root="/tmp/superpowers-$(id -u)"

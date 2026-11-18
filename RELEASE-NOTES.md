@@ -40,7 +40,7 @@ fields bumped to `7.0.2.2`.
   real directory you own, or the helper exits 2. Two first runs racing the
   move no longer leave the winner's symlink inside the migrated directory.
 - **Follow-up fixes (#24).** `sdd-workspace` exits 2 instead of looping
-  forever when it can't create the workspace directory. A root whose parent
+  forever when it can't create the workspace directory or write its marker. A root whose parent
   is missing is refused with a hint about the parent, not "remove it". The
   brainstorm `start-server.sh` JSON error escapes control characters and
   never comes back empty.
