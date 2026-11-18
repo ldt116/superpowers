@@ -267,6 +267,116 @@ main() {
         fail "does not migrate a symlinked legacy dir (rc=$RC err=$ERR)"
     fi
 
+    # a root whose parent is missing is refused with a hint about the parent,
+    # not "remove it"
+    RC=0
+    OUT=$(SUPERPOWERS_SCRATCH_ROOT="$TEST_ROOT/no-parent/root" \
+        SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_ROOT/legacy-noparent" \
+        bash "$HELPER" -C "$repo" 2>"$TEST_ROOT/err-noparent") || RC=$?
+    ERR=$(cat "$TEST_ROOT/err-noparent")
+    expect_refusal "refuses a root whose parent is missing" "" "$(ls -A "$TEST_ROOT/no-parent" 2>/dev/null)" \
+        "could not be created (does its parent directory exist?"
+
+    # losing the race to create the root falls through to the checks: a stub
+    # mkdir creates the root (mode 700) and then fails, as a lost race would
+    local real_mkdir real_mv
+    real_mkdir=$(command -v mkdir)
+    real_mv=$(command -v mv)
+    mkdir "$TEST_ROOT/racebin"
+    cat > "$TEST_ROOT/racebin/mkdir" <<EOF
+#!/bin/sh
+case "\$1" in -m) "$real_mkdir" "\$@"; exit 1 ;; esac
+exec "$real_mkdir" "\$@"
+EOF
+    chmod +x "$TEST_ROOT/racebin/mkdir"
+    RC=0
+    OUT=$(PATH="$TEST_ROOT/racebin:$PATH" SUPERPOWERS_SCRATCH_ROOT="$TEST_ROOT/root-race" \
+        SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_ROOT/legacy-race" \
+        bash "$HELPER" -C "$repo" 2>"$TEST_ROOT/err-race") || RC=$?
+    expect "a lost race to create the root falls through to the checks" \
+        "0 $(spell "$TEST_ROOT/root-race/$id")" "$RC $OUT"
+
+    # two first runs racing the migration: the winner moves the legacy dir and
+    # leaves its symlink before the loser's mv runs. A stub mv plays the
+    # winner on its first call. The loser must not move the winner's symlink
+    # into the migrated dir.
+    mkdir "$TEST_ROOT/mvbin-race"
+    cat > "$TEST_ROOT/mvbin-race/mv" <<EOF
+#!/bin/sh
+if [ ! -e "$TEST_ROOT/mvbin-race/done" ]; then
+  : > "$TEST_ROOT/mvbin-race/done"
+  "$real_mv" "\$1" "\$2" && ln -s "\$2" "\$1"
+fi
+exec "$real_mv" "\$@"
+EOF
+    chmod +x "$TEST_ROOT/mvbin-race/mv"
+    mkdir -p "$TEST_ROOT/legacy-mvrace/$id/plans"
+    echo plan > "$TEST_ROOT/legacy-mvrace/$id/plans/p.md"
+    RC=0
+    OUT=$(PATH="$TEST_ROOT/mvbin-race:$PATH" SUPERPOWERS_SCRATCH_ROOT="$TEST_ROOT/root-mvrace" \
+        SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_ROOT/legacy-mvrace" \
+        bash "$HELPER" -C "$repo" 2>"$TEST_ROOT/err-mvrace") || RC=$?
+    ROOT="$TEST_ROOT/root-mvrace"
+    LEGACY="$TEST_ROOT/legacy-mvrace"
+    if [[ "$RC" == 0 && "$OUT" == "$(spell "$ROOT/$id")" && -f "$ROOT/$id/plans/p.md" \
+        && ! -e "$ROOT/$id/$id" && ! -L "$ROOT/$id/$id" \
+        && -L "$LEGACY/$id" && "$(readlink "$LEGACY/$id")" == "$ROOT/$id" ]]; then
+        pass "losing the migration race leaves no symlink inside the migrated dir"
+    else
+        fail "losing the migration race leaves no symlink inside the migrated dir (rc=$RC err=$(cat "$TEST_ROOT/err-mvrace"))"
+        find "$ROOT/$id" -maxdepth 1 2>&1 | sed 's/^/    /'
+    fi
+
+    # the legacy dir swapped for a symlink between the checks and the mv: the
+    # moved-in symlink must not become the scratch dir, and nothing is
+    # written or moved through it (the target holds an entry named <id>)
+    mkdir -p "$TEST_ROOT/mvbin-swap" "$TEST_ROOT/swap-target" "$TEST_ROOT/legacy-swap/$id"
+    cat > "$TEST_ROOT/mvbin-swap/mv" <<EOF
+#!/bin/sh
+if [ ! -e "$TEST_ROOT/mvbin-swap/done" ]; then
+  : > "$TEST_ROOT/mvbin-swap/done"
+  "$real_mv" "\$1" "\$1.orig" && ln -s "$TEST_ROOT/swap-target" "\$1"
+fi
+exec "$real_mv" "\$@"
+EOF
+    chmod +x "$TEST_ROOT/mvbin-swap/mv"
+    : > "$TEST_ROOT/swap-target/$id"
+    before=$(ls -A "$TEST_ROOT/swap-target")
+    RC=0
+    OUT=$(PATH="$TEST_ROOT/mvbin-swap:$PATH" SUPERPOWERS_SCRATCH_ROOT="$TEST_ROOT/root-swap" \
+        SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_ROOT/legacy-swap" \
+        bash "$HELPER" -C "$repo" 2>"$TEST_ROOT/err-swap") || RC=$?
+    ERR=$(cat "$TEST_ROOT/err-swap")
+    expect_refusal "refuses a legacy dir swapped for a symlink during migration" \
+        "$before" "$(ls -A "$TEST_ROOT/swap-target")" "is not a real directory owned by you"
+
+    # a legacy dir that happens to hold an entry named <id> migrates with it:
+    # only a symlink back to the migrated dir counts as a lost race
+    mkdir -p "$TEST_ROOT/legacy-selfname/$id/$id"
+    echo keep > "$TEST_ROOT/legacy-selfname/$id/$id/k"
+    run_helper selfname -C "$repo"
+    if [[ "$RC" == 0 && -f "$ROOT/$id/$id/k" && -L "$LEGACY/$id" ]]; then
+        pass "a legacy entry named <id> migrates with its dir"
+    else
+        fail "a legacy entry named <id> migrates with its dir (rc=$RC err=$ERR)"
+    fi
+
+    # a symlink planted at the emptied legacy path after the mv: the link
+    # left behind must not be created inside wherever it points
+    mkdir -p "$TEST_ROOT/mvbin-plant" "$TEST_ROOT/plant-target" "$TEST_ROOT/legacy-plant/$id"
+    cat > "$TEST_ROOT/mvbin-plant/mv" <<EOF2
+#!/bin/sh
+"$real_mv" "\$@" || exit
+ln -s "$TEST_ROOT/plant-target" "\$1"
+EOF2
+    chmod +x "$TEST_ROOT/mvbin-plant/mv"
+    RC=0
+    OUT=$(PATH="$TEST_ROOT/mvbin-plant:$PATH" SUPERPOWERS_SCRATCH_ROOT="$TEST_ROOT/root-plant" \
+        SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_ROOT/legacy-plant" \
+        bash "$HELPER" -C "$repo" 2>"$TEST_ROOT/err-plant") || RC=$?
+    expect "the legacy symlink is not created through a planted symlink" \
+        "0 $(spell "$TEST_ROOT/root-plant/$id") " "$RC $OUT $(ls -A "$TEST_ROOT/plant-target")"
+
     # default root is /tmp/superpowers-$(id -u)
     local default_root default_out
     default_root="/tmp/superpowers-$(id -u)"

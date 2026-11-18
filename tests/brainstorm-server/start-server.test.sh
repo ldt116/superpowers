@@ -216,6 +216,49 @@ for args in "--project-dir $TEST_DIR/project" ""; do
   fi
 done
 
+# The JSON error stays valid JSON with a non-empty message when the helper's
+# message holds control characters (tab, CR, ^A in the root path), and when
+# mktemp can't capture the helper's stderr at all.
+is_json_error() {
+  node -e 'const e = JSON.parse(require("fs").readFileSync(0, "utf8")).error;
+           process.exit(typeof e === "string" && e.length > 0 ? 0 : 1)' <<<"$1" 2>/dev/null
+}
+mkdir -m 700 "$TEST_DIR/tab-target"
+tab_root="$TEST_DIR/tab"$'\t'"cr"$'\r'"ctl"$'\001'"root"
+ln -s "$TEST_DIR/tab-target" "$tab_root"
+out=$(
+  PATH="$TEST_DIR/fake-bin:$PATH" MSYSTEM="" SUPERPOWERS_SCRATCH_ROOT="$tab_root" \
+    bash "$START_SCRIPT" --foreground 2>/dev/null
+)
+status=$?
+if [[ $status -eq 1 && "$out" == *'\tcr\rctlroot'* ]] && is_json_error "$out"; then
+  pass "control characters in the scratch root path -> valid JSON error"
+else
+  fail "control characters in the scratch root path -> valid JSON error" "status=$status out=$out"
+fi
+# The helper's stderr then goes to ours: appended, so a log file already
+# holding earlier lines keeps them.
+out=$(
+  {
+    echo "earlier line" >&2
+    PATH="$TEST_DIR/fake-bin:$PATH" MSYSTEM="" SUPERPOWERS_SCRATCH_ROOT="$unsafe_root" \
+      TMPDIR="$TEST_DIR/no-such-tmpdir" bash "$START_SCRIPT" --foreground
+  } 2>"$TEST_DIR/mktemp-stderr.log"
+)
+status=$?
+if [[ $status -eq 1 ]] && is_json_error "$out"; then
+  pass "mktemp failure -> JSON error with a non-empty message"
+else
+  fail "mktemp failure -> JSON error with a non-empty message" "status=$status out=$out"
+fi
+if [[ "$(head -n 1 "$TEST_DIR/mktemp-stderr.log")" == "earlier line" ]] \
+   && grep -q "must be mode 700" "$TEST_DIR/mktemp-stderr.log"; then
+  pass "mktemp failure -> helper message appended to stderr, earlier lines kept"
+else
+  fail "mktemp failure -> helper message appended to stderr, earlier lines kept" \
+       "stderr: $(cat "$TEST_DIR/mktemp-stderr.log")"
+fi
+
 echo ""
 echo "--- Results: $passed passed, $failed failed ---"
 if [[ $failed -gt 0 ]]; then

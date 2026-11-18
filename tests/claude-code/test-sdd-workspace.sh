@@ -847,6 +847,34 @@ PLAN
         echo "    marker: $(cat "$dir_out/plan-path" 2>/dev/null)"
     fi
 
+    # --- A workspace that can't be created stops the script, not loops ---
+    # A file where <scratch-dir>/sdd should be makes every mkdir fail. The
+    # script runs in the background and is killed if it outlives 5 seconds.
+    local blocked="$TEST_ROOT/scratch-blocked" blocked_pid hung=false
+    mkdir -m 700 "$blocked"
+    mkdir "$blocked/$repo_id"
+    : > "$blocked/$repo_id/sdd"
+    (cd "$repo" && SUPERPOWERS_SCRATCH_ROOT="$blocked" exec "$SDD_SCRIPTS/sdd-workspace" plan-a.md) \
+        >"$TEST_ROOT/blocked.out" 2>"$TEST_ROOT/blocked.err" &
+    blocked_pid=$!
+    for _ in $(seq 50); do
+        kill -0 "$blocked_pid" 2>/dev/null || break
+        sleep 0.1
+    done
+    if kill -0 "$blocked_pid" 2>/dev/null; then
+        hung=true
+        kill "$blocked_pid"
+    fi
+    rc=0
+    wait "$blocked_pid" || rc=$?
+    if [[ "$hung" == false && "$rc" -eq 2 && ! -s "$TEST_ROOT/blocked.out" ]]; then
+        pass "sdd-workspace exits 2 when the workspace directory can't be created"
+    else
+        fail "sdd-workspace exits 2 when the workspace directory can't be created"
+        echo "    hung: $hung  exit: $rc"
+        echo "    stderr: $(head -n 2 "$TEST_ROOT/blocked.err")"
+    fi
+
     # --- An unsafe scratch root stops the script: no path, no workspace ---
     # (the mode-700 check is skipped on Windows shells, where mode bits are fake)
     case "$(uname -s)" in

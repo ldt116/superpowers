@@ -26,19 +26,28 @@ SCRATCH_DIR_HELPER="$SCRIPT_DIR/../../using-superpowers/scripts/scratch-dir"
 # Run the scratch-dir helper with the given args and leave its path in
 # SCRATCH_OUT (set, not printed, so the exit below leaves this shell).
 # On failure (unsafe root) print the script's JSON error with the helper's
-# one-line message (backslashes and double quotes escaped) and exit 1. stderr
-# is kept apart from stdout: the helper may warn there on success.
+# one-line message (JSON-escaped) and exit 1. stderr is kept apart from
+# stdout: the helper may warn there on success. When mktemp fails the
+# helper's stderr goes straight to ours (appended: reopening /dev/stderr
+# with > would truncate a log file behind it) and the JSON gets a generic
+# message.
 scratch_dir() {
-  local err_file msg
-  err_file="$(mktemp)"
-  if SCRATCH_OUT="$("${BASH:-bash}" "$SCRATCH_DIR_HELPER" "$@" 2>"$err_file")"; then
-    rm -f "$err_file"
+  local err_file msg=""
+  err_file="$(mktemp 2>/dev/null)" || err_file=""
+  if SCRATCH_OUT="$("${BASH:-bash}" "$SCRATCH_DIR_HELPER" "$@" 2>>"${err_file:-/dev/stderr}")"; then
+    [[ -z "$err_file" ]] || rm -f "$err_file"
     return 0
   fi
-  msg="$(head -n 1 "$err_file")"
-  rm -f "$err_file"
+  if [[ -n "$err_file" ]]; then
+    msg="$(head -n 1 "$err_file")"
+    rm -f "$err_file"
+  fi
+  [[ -n "$msg" ]] || msg="scratch-dir helper failed: $SCRATCH_DIR_HELPER"
   msg="${msg//\\/\\\\}"
   msg="${msg//\"/\\\"}"
+  msg="${msg//$'\t'/\\t}"
+  msg="${msg//$'\r'/\\r}"
+  msg="$(printf '%s' "$msg" | tr -d '\000-\037')"
   echo "{\"error\": \"${msg}\"}"
   exit 1
 }
