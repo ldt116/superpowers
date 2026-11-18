@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Helper functions for Claude Code skill tests
 
+# Exported with the export -f'd helpers below, which use it in child shells.
 SUPERPOWERS_REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export SUPERPOWERS_REPO_ROOT
 
 # Run Claude Code with a prompt and capture output
 # Usage: run_claude "prompt text" [timeout_seconds] [allowed_tools]
@@ -150,7 +152,11 @@ cleanup_test_project() {
     # Plans created by create_test_plan live in the project's scratch dir;
     # resolve it before the project directory goes away.
     if [ -d "$test_dir" ]; then
-        scratch=$(bash "$SUPERPOWERS_REPO_ROOT/skills/using-superpowers/scripts/scratch-dir" -C "$test_dir" 2>/dev/null) || scratch=""
+        # The helper's own stderr says why it refused the root.
+        scratch=$(bash "$SUPERPOWERS_REPO_ROOT/skills/using-superpowers/scripts/scratch-dir" -C "$test_dir") || {
+            echo "cleanup_test_project: could not resolve the scratch dir for $test_dir; it may be left behind" >&2
+            scratch=""
+        }
         rm -rf "$test_dir"
     fi
     if [ -n "$scratch" ]; then

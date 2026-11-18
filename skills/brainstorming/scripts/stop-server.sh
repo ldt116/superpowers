@@ -3,10 +3,11 @@
 # Usage: stop-server.sh <session_dir>
 #
 # Kills the server process. Only deletes the session directory when it is
-# a no-project session (ephemeral): brainstorm-<id> directly under a
-# superpowers-* scratch root, or the legacy /tmp/brainstorm-<id>. Project
-# sessions under <scratch-dir>/brainstorm/ are kept so mockups can be
-# reviewed later.
+# a no-project session (ephemeral): brainstorm-<id> directly under the real
+# scratch root (scratch-dir --root, so a lookalike superpowers-* directory or
+# a root the helper refuses never qualifies), or the legacy
+# /tmp/brainstorm-<id>. Project sessions under <scratch-dir>/brainstorm/ are
+# kept so mockups can be reviewed later.
 
 SESSION_DIR="$1"
 
@@ -15,6 +16,7 @@ if [[ -z "$SESSION_DIR" ]]; then
   exit 1
 fi
 
+SCRATCH_DIR_HELPER="$(cd "$(dirname "$0")" && pwd)/../../using-superpowers/scripts/scratch-dir"
 STATE_DIR="${SESSION_DIR}/state"
 PID_FILE="${STATE_DIR}/server.pid"
 SERVER_ID_FILE="${STATE_DIR}/server-instance-id"
@@ -60,6 +62,16 @@ command_has_server_id() {
     *" $expected_arg "*) return 0 ;;
     *) return 1 ;;
   esac
+}
+
+# True when $1 is the scratch root the helper vouches for, compared by
+# physical path. Fails closed when the helper refuses the root.
+is_scratch_root() {
+  local root parent
+  root="$("${BASH:-bash}" "$SCRATCH_DIR_HELPER" --root 2>/dev/null)" || return 1
+  root="$(cd "$root" 2>/dev/null && pwd -P)" || return 1
+  parent="$(cd "$1" 2>/dev/null && pwd -P)" || return 1
+  [[ "$parent" == "$root" ]]
 }
 
 # Confirm a PID has this session's per-start instance id, not just a familiar
@@ -112,9 +124,8 @@ if [[ -f "$PID_FILE" ]]; then
   mark_stopped "stop-server.sh"
 
   # Only delete the ephemeral no-project sessions
-  session_base="$(basename "$SESSION_DIR")"
-  parent_base="$(basename "$(dirname "$SESSION_DIR")")"
-  if [[ "$session_base" == brainstorm-* && "$parent_base" == superpowers-* ]] ||
+  if { [[ "$(basename "$SESSION_DIR")" == brainstorm-* ]] &&
+       is_scratch_root "$(dirname "$SESSION_DIR")"; } ||
      [[ "$SESSION_DIR" == /tmp/brainstorm-* ]]; then
     rm -rf "$SESSION_DIR"
   fi
