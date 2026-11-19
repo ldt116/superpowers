@@ -14,12 +14,12 @@ PASS=0; FAIL=0
 PIDS=()
 DIRS=()
 
-# Session deletion is keyed on the scratch root's name (superpowers-*), so the
-# test root keeps that shape and lives in a temp dir, never the real /tmp.
+# Session deletion is keyed on the real scratch root (scratch-dir --root), so
+# the test root is a safe one (mode 700) in a temp dir, never the real /tmp.
 TEST_ROOT="$(mktemp -d)"
 export SUPERPOWERS_SCRATCH_ROOT="$TEST_ROOT/superpowers-test"
 export SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_ROOT/legacy"
-mkdir -p "$SUPERPOWERS_SCRATCH_ROOT"
+mkdir -m 700 "$SUPERPOWERS_SCRATCH_ROOT"
 
 cleanup() {
   for pid in "${PIDS[@]}"; do
@@ -222,16 +222,48 @@ else
   bad "project session was deleted or stop failed" "exists=$([[ -e "$SESS" ]] && echo yes || echo no) out=$OUT"
 fi
 
-# The parent-name half of the deletion guard: brainstorm-* outside a
-# superpowers-* root is kept.
-SESS="$TEST_ROOT/not-scratch/brainstorm-123-456"; track_dir "$SESS"
+# The parent half of the deletion guard: brainstorm-* outside the real
+# scratch root is kept, even under another superpowers-* directory.
+for parent in not-scratch superpowers-other; do
+  SESS="$TEST_ROOT/$parent/brainstorm-123-456"; track_dir "$SESS"
+  start_session "$SESS"
+  OUT="$("$STOP" "$SESS")"
+  if [[ -d "$SESS" ]] && [[ "$OUT" == *stopped* ]]; then
+    ok "stop keeps a brainstorm-* session under $parent/, not the scratch root"
+  else
+    bad "brainstorm-* session under $parent/ was deleted or stop failed" "exists=$([[ -e "$SESS" ]] && echo yes || echo no) out=$OUT"
+  fi
+done
+
+# An override root with any name is the real root: its no-project sessions
+# are deleted.
+custom_root="$TEST_ROOT/custom-root"
+mkdir -m 700 "$custom_root"
+SESS="$custom_root/brainstorm-123-456"; track_dir "$SESS"
 start_session "$SESS"
-OUT="$("$STOP" "$SESS")"
-if [[ -d "$SESS" ]] && [[ "$OUT" == *stopped* ]]; then
-  ok "stop keeps a brainstorm-* session whose parent is not a superpowers-* root"
+OUT="$(SUPERPOWERS_SCRATCH_ROOT="$custom_root" "$STOP" "$SESS")"
+if [[ ! -e "$SESS" ]] && [[ "$OUT" == *stopped* ]]; then
+  ok "stop deletes a no-project session under an override root of any name"
 else
-  bad "brainstorm-* session outside a superpowers-* root was deleted or stop failed" "exists=$([[ -e "$SESS" ]] && echo yes || echo no) out=$OUT"
+  bad "no-project session under an override root was not deleted" "exists=$([[ -e "$SESS" ]] && echo yes || echo no) out=$OUT"
 fi
+
+# A root the helper refuses (mode 755) is not trusted: the session is kept.
+unsafe_root="$TEST_ROOT/superpowers-unsafe"
+mkdir -p "$unsafe_root" && chmod 755 "$unsafe_root"
+SESS="$unsafe_root/brainstorm-123-456"; track_dir "$SESS"
+start_session "$SESS"
+OUT="$(SUPERPOWERS_SCRATCH_ROOT="$unsafe_root" MSYSTEM="" "$STOP" "$SESS" 2>/dev/null)"
+case "$(uname -s)" in
+  MSYS*|MINGW*|CYGWIN*) ok "unsafe-root case skipped (mode bits are fake here)" ;;
+  *)
+    if [[ -d "$SESS" ]] && [[ "$OUT" == *stopped* ]]; then
+      ok "stop keeps a session under a scratch root the helper refuses"
+    else
+      bad "session under a refused scratch root was deleted or stop failed" "exists=$([[ -e "$SESS" ]] && echo yes || echo no) out=$OUT"
+    fi
+    ;;
+esac
 
 # Legacy no-project fallback /tmp/brainstorm-*: still deleted. The unique
 # name is created and removed by this test only.

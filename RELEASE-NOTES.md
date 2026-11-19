@@ -27,8 +27,9 @@ fields bumped to `7.0.2.2`.
   `subagent-driven-development`, `executing-plans`, and
   `multi-dimension-review` prose all take the location from the helper, run
   by its absolute path. A brainstorm session with no project lives at
-  `<root>/brainstorm-<id>` and is deleted on stop only under a
-  `superpowers-*` parent. Divergence #5 in CLAUDE.md and the README fork
+  `<root>/brainstorm-<id>` and is deleted on stop only when its parent is
+  the real root (`scratch-dir --root`, compared by physical path; a root the
+  helper refuses deletes nothing). Divergence #5 in CLAUDE.md and the README fork
   section are updated to match; #7's artifact path follows.
 - **Migration.** When `<root>/<project-id>` does not exist and the legacy
   `/tmp/superpowers/<project-id>` is a real directory you own inside a legacy
@@ -43,14 +44,18 @@ fields bumped to `7.0.2.2`.
   forever when it can't create the workspace directory or write its marker. A root whose parent
   is missing is refused with a hint about the parent, not "remove it". The
   brainstorm `start-server.sh` JSON error escapes control characters and
-  never comes back empty.
+  never comes back empty. `cleanup_test_project` warns when it can't
+  resolve a scratch dir instead of leaving it behind silently, and its repo
+  root is exported for child shells.
 - **`$TMPDIR` is deliberately not used.** It can differ per session or
   sandbox, which would break plan handoff to a fresh session that has to
   find the plan file by path.
 
 ### Tests
 
-- New `tests/scratch-dir/test-scratch-dir.sh`; the brainstorm-server,
+- New `tests/scratch-dir/test-scratch-dir.sh`; the ownership cases run as
+  root too (a chowned directory stands in for another user's). New
+  `tests/claude-code/test-test-helpers.sh`. The brainstorm-server,
   `sdd-workspace`, `executing-plans` script, and sdd-helper-paths tests
   cover the new root.
 - **Test-leak fix.** The tests that ran against the real `/tmp` (the

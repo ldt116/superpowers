@@ -97,6 +97,22 @@ main() {
     local id
     id="$(path_id "$repo")"
 
+    # A directory owned by someone else, for the ownership checks: / when not
+    # root; as root, a dir chowned to nobody. None on Windows.
+    FOREIGN_DIR=""
+    case "$(uname -s)" in
+        MSYS*|MINGW*|CYGWIN*) ;;
+        *)
+            if [[ "$(id -u)" == 0 ]]; then
+                FOREIGN_DIR="$TEST_ROOT/foreign"
+                mkdir -m 700 "$FOREIGN_DIR"
+                chown 65534 "$FOREIGN_DIR"
+            else
+                FOREIGN_DIR=/
+            fi
+            ;;
+    esac
+
     # fresh root is created mode 700
     run_helper fresh -C "$repo"
     if [[ "$RC" == 0 && -n "$(find "$ROOT" -maxdepth 0 -perm 0700)" ]]; then
@@ -175,22 +191,15 @@ main() {
     after=$(find "$TEST_ROOT/root-mode" -printf '%p %m\n' | sort)
     expect_refusal "refuses a root with mode 755" "$before" "$after" "must be mode 700"
 
-    # refuses a real directory owned by someone else (/ is root-owned); not
-    # testable as root, and Windows has no uid ownership to fake
-    case "$(uname -s)" in
-        MSYS*|MINGW*|CYGWIN*) ;;
-        *)
-            if [[ "$(id -u)" == 0 ]]; then
-                echo "  [SKIP] refuses a root owned by someone else (running as uid 0)"
-            else
-                RC=0
-                OUT=$(SUPERPOWERS_SCRATCH_ROOT=/ SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_ROOT/legacy-foreign" \
-                    bash "$HELPER" -C "$repo" 2>"$TEST_ROOT/err-foreign") || RC=$?
-                ERR=$(cat "$TEST_ROOT/err-foreign")
-                expect_refusal "refuses a root owned by someone else" "-" "-" "is not owned by you"
-            fi
-            ;;
-    esac
+    # refuses a real directory owned by someone else: / when not root, a
+    # chowned mode-700 dir when root; Windows has no uid ownership to fake
+    if [[ -n "$FOREIGN_DIR" ]]; then
+        RC=0
+        OUT=$(SUPERPOWERS_SCRATCH_ROOT="$FOREIGN_DIR" SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_ROOT/legacy-foreign" \
+            bash "$HELPER" -C "$repo" 2>"$TEST_ROOT/err-foreign") || RC=$?
+        ERR=$(cat "$TEST_ROOT/err-foreign")
+        expect_refusal "refuses a root owned by someone else" "-" "-" "is not owned by you"
+    fi
 
     # refuses a relative root; nothing is created under the working directory
     mkdir "$TEST_ROOT/cwd"
@@ -376,6 +385,66 @@ EOF2
         bash "$HELPER" -C "$repo" 2>"$TEST_ROOT/err-plant") || RC=$?
     expect "the legacy symlink is not created through a planted symlink" \
         "0 $(spell "$TEST_ROOT/root-plant/$id") " "$RC $OUT $(ls -A "$TEST_ROOT/plant-target")"
+
+    # the same swap, but for a real directory owned by someone else (needs
+    # root to make): it must not become the scratch dir either
+    if [[ "$(id -u)" == 0 && -n "$FOREIGN_DIR" ]]; then
+        mkdir -p "$TEST_ROOT/mvbin-fswap" "$TEST_ROOT/legacy-fswap/$id"
+        cat > "$TEST_ROOT/mvbin-fswap/mv" <<EOF2
+#!/bin/sh
+if [ ! -e "$TEST_ROOT/mvbin-fswap/done" ]; then
+  : > "$TEST_ROOT/mvbin-fswap/done"
+  "$real_mv" "\$1" "\$1.orig" && mkdir "\$1" && chown 65534 "\$1"
+fi
+exec "$real_mv" "\$@"
+EOF2
+        chmod +x "$TEST_ROOT/mvbin-fswap/mv"
+        RC=0
+        OUT=$(PATH="$TEST_ROOT/mvbin-fswap:$PATH" SUPERPOWERS_SCRATCH_ROOT="$TEST_ROOT/root-fswap" \
+            SUPERPOWERS_LEGACY_SCRATCH_ROOT="$TEST_ROOT/legacy-fswap" \
+            bash "$HELPER" -C "$repo" 2>"$TEST_ROOT/err-fswap") || RC=$?
+        ERR=$(cat "$TEST_ROOT/err-fswap")
+        expect_refusal "refuses a legacy dir swapped for someone else's during migration" \
+            "-" "-" "is not a real directory owned by you"
+    else
+        echo "  [SKIP] refuses a legacy dir swapped for someone else's during migration (needs uid 0)"
+    fi
+
+    # a fresh project dir is mode 700 like the root
+    run_helper projmode -C "$repo"
+    if [[ "$RC" == 0 && -n "$(find "$ROOT/$id" -maxdepth 0 -perm 0700)" ]]; then
+        pass "a fresh project dir is mode 700"
+    else
+        fail "a fresh project dir is mode 700 (rc=$RC mode=$(stat -c %a "$ROOT/$id" 2>/dev/null))"
+    fi
+
+    # a symlinked legacy root is never migrated from
+    mkdir -p "$TEST_ROOT/legacy-real/$id/plans"
+    echo plan > "$TEST_ROOT/legacy-real/$id/plans/p.md"
+    ln -s "$TEST_ROOT/legacy-real" "$TEST_ROOT/legacy-lroot"
+    run_helper lroot -C "$repo"
+    if [[ "$RC" == 0 && -d "$ROOT/$id" && -z "$(ls -A "$ROOT/$id")" \
+        && -d "$TEST_ROOT/legacy-real/$id" && ! -L "$TEST_ROOT/legacy-real/$id" \
+        && -f "$TEST_ROOT/legacy-real/$id/plans/p.md" ]]; then
+        pass "a symlinked legacy root is not migrated from"
+    else
+        fail "a symlinked legacy root is not migrated from (rc=$RC err=$ERR)"
+    fi
+
+    # a legacy dir owned by someone else is not migrated (needs root to make)
+    if [[ "$(id -u)" == 0 && -n "$FOREIGN_DIR" ]]; then
+        mkdir -p "$TEST_ROOT/legacy-fdir/$id/plans"
+        chown -R 65534 "$TEST_ROOT/legacy-fdir/$id"
+        run_helper fdir -C "$repo"
+        if [[ "$RC" == 0 && -d "$ROOT/$id" && -z "$(ls -A "$ROOT/$id")" \
+            && -d "$LEGACY/$id" && ! -L "$LEGACY/$id" ]]; then
+            pass "a legacy dir owned by someone else is not migrated"
+        else
+            fail "a legacy dir owned by someone else is not migrated (rc=$RC err=$ERR)"
+        fi
+    else
+        echo "  [SKIP] a legacy dir owned by someone else is not migrated (needs uid 0)"
+    fi
 
     # default root is /tmp/superpowers-$(id -u)
     local default_root default_out
