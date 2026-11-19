@@ -38,7 +38,7 @@ All payloads go to files; nothing bulk-enters the chat:
 
 ```bash
 LABEL=$(date +%Y%m%d-%H%M%S)-<short-target>
-WS=/tmp/superpowers/<project-id>/reviews/$LABEL
+WS="$(bash <absolute path to ../using-superpowers/scripts/scratch-dir>)/reviews/$LABEL"
 mkdir -p "$WS"
 git diff BASE..HEAD -U10        > "$WS/package.diff"
 git diff BASE..HEAD --stat      > "$WS/package.stat"
@@ -49,8 +49,8 @@ cp CLAUDE.md "$WS/root-CLAUDE.md" 2>/dev/null || true
 # "$WS/" as "<dir-slug>-CLAUDE.md" / "<dir-slug>-AGENTS.md" when present
 ```
 
-`<project-id>` is the repo root's basename plus the first 6 hex chars of
-the root path's md5 — the same scheme every other skill uses.
+Run `scratch-dir` by its absolute path, from the working tree you're
+executing in — the same scratch location every other skill uses.
 
 ### 3. Dispatch six dimension reviewers — one message, six subagents
 
@@ -96,6 +96,6 @@ no fix dispatches.
 
 ## Artifacts
 
-Everything lives under `/tmp/superpowers/<project-id>/reviews/<label>/`:
+Everything lives under `/tmp/superpowers-<uid>/<project-id>/reviews/<label>/`:
 package files, six `findings-<dim>.md`, `report.md`. Machine-internal —
 never committed, never posted.
